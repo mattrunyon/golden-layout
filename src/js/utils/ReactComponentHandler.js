@@ -44,6 +44,10 @@ lm.utils.copy( lm.utils.ReactComponentHandler.prototype, {
 	 * @returns {void}
 	 */
 	_gotReactComponent: function(component) {
+		if (!component) {
+			return;
+		}
+		
 		this._reactComponent = component;
 		this._originalComponentWillUpdate = this._reactComponent.componentWillUpdate || function() {};
 		this._reactComponent.componentWillUpdate = this._onUpdate.bind( this );
