@@ -112,7 +112,8 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 	 * @returns {void}
 	 */
 	registerComponent: function( name, constructor ) {
-		if( typeof constructor !== 'function' ) {
+		if( typeof constructor !== 'function' && 
+      ( constructor == null || constructor.render == null || typeof constructor.render !== 'function' ) ) {
 			throw new Error( 'Please register a constructor function' );
 		}
 
