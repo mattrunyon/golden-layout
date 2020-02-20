@@ -153,12 +153,8 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 * @returns {void}
 	 */
 	_onTabContentFocusIn: function() {
-		if (
-		!this.contentItem.container._contentElement[0].contains(
-			document.activeElement
-		)
-		) {
-		this.contentItem.container._contentElement.focus();
+		if ( !this.contentItem.container._contentElement[0].contains( document.activeElement ) ) {
+			this.contentItem.container._contentElement.focus();
 		}
 		this.element.addClass("lm_focusin");
 	},
@@ -196,8 +192,11 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 			if( this.contentItem !== activeContentItem ) {
 				this.header.parent.setActiveContentItem(this.contentItem);
 			}
-			else if( this.contentItem.isComponent ) {
-				this.contentItem.container._contentElement[0].focus( {preventScroll: true } );
+			else if( this.contentItem.isComponent 
+				&& !this.contentItem.container._contentElement[0].contains( document.activeElement ) 
+			) {
+				this.contentItem.container._contentElement.focus();
+				
 			}
 			// middle mouse button
 		} else if( event.button === 1 && this.contentItem.config.isClosable ) {
