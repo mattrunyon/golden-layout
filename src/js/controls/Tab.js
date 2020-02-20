@@ -196,6 +196,9 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 			if( this.contentItem !== activeContentItem ) {
 				this.header.parent.setActiveContentItem(this.contentItem);
 			}
+			else if( this.contentItem.isComponent ) {
+				this.contentItem.container._contentElement[0].focus( {preventScroll: true } );
+			}
 			// middle mouse button
 		} else if( event.button === 1 && this.contentItem.config.isClosable ) {
 			this._onCloseClick( event );
