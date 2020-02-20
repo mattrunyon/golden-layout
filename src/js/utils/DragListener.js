@@ -29,15 +29,15 @@ lm.utils.DragListener = function( eElement, nButtonCode ) {
 	this._fDown = lm.utils.fnBind( this.onMouseDown, this );
 
 
-	this._eElement.on( 'mousedown touchstart', this._fDown );
+	this._eElement.on( 'mousedown', this._fDown );
 };
 
 lm.utils.DragListener.timeout = null;
 
 lm.utils.copy( lm.utils.DragListener.prototype, {
 	destroy: function() {
-		this._eElement.unbind( 'mousedown touchstart', this._fDown );
-        this._oDocument.unbind( 'mouseup touchend', this._fUp );
+		this._eElement.unbind( 'mousedown', this._fDown );
+        this._oDocument.unbind( 'mouseup', this._fUp );
         this._eElement = null;
         this._oDocument = null;
         this._eBody = null;
@@ -46,14 +46,14 @@ lm.utils.copy( lm.utils.DragListener.prototype, {
 	onMouseDown: function( oEvent ) {
 		oEvent.preventDefault();
 
-		if( oEvent.button == 0 || oEvent.type === "touchstart" ) {
+		if( oEvent.button == 0 ) {
 			var coordinates = this._getCoordinates( oEvent );
 
 			this._nOriginalX = coordinates.x;
 			this._nOriginalY = coordinates.y;
 
-			this._oDocument.on( 'mousemove touchmove', this._fMove );
-			this._oDocument.one( 'mouseup touchend', this._fUp );
+			this._oDocument.on( 'mousemove', this._fMove );
+			this._oDocument.one( 'mouseup', this._fUp );
 
 			this._timeout = setTimeout( lm.utils.fnBind( this._startDrag, this ), this._nDelay );
 		}
@@ -90,8 +90,8 @@ lm.utils.copy( lm.utils.DragListener.prototype, {
 			this._eBody.removeClass( 'lm_dragging' );
 			this._eElement.removeClass( 'lm_dragging' );
 			this._oDocument.find( 'iframe' ).css( 'pointer-events', '' );
-			this._oDocument.unbind( 'mousemove touchmove', this._fMove );
-			this._oDocument.unbind( 'mouseup touchend', this._fUp );
+			this._oDocument.unbind( 'mousemove', this._fMove );
+			this._oDocument.unbind( 'mouseup', this._fUp );
 
 			if( this._bDragging === true ) {
 				this._bDragging = false;

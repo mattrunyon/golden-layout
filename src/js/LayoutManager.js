@@ -25,6 +25,8 @@ lm.LayoutManager = function( config, container ) {
 	this._itemAreas = [];
 	this._resizeFunction = lm.utils.fnBind( this._onResize, this );
 	this._unloadFunction = lm.utils.fnBind( this._onUnload, this );
+	this._windowBlur = this._windowBlur.bind(this);
+	this._windowFocus = this._windowFocus.bind(this);
 	this._maximisedItem = null;
 	this._maximisePlaceholder = $( '<div class="lm_maximise_place"></div>' );
 	this._creationTimeoutPassed = false;
@@ -315,6 +317,7 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 		this._onUnload();
 		$( window ).off( 'resize', this._resizeFunction );
 		$( window ).off( 'unload beforeunload', this._unloadFunction );
+		$( window ).off( 'blur.lm' ).off( 'focus.lm' );
 		this.root.callDownwards( '_$destroy', [], true );
 		this.root.contentItems = [];
 		this.tabDropPlaceholder.remove();
@@ -764,7 +767,22 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 		if( this._isFullPage ) {
 			$( window ).resize( this._resizeFunction );
 		}
-		$( window ).on( 'unload beforeunload', this._unloadFunction );
+		$( window )
+			.on( 'unload beforeunload', this._unloadFunction )
+			.on("blur.lm", this._windowBlur)
+			.on("focus.lm", this._windowFocus);
+	},
+
+
+	/**
+	 * Handles setting a class based on window focus, useful for focus indicators
+	 */
+	_windowBlur: function(){
+		this.root.element.addClass("lm_window_blur");
+	}, 
+
+	_windowFocus: function(){
+		this.root.element.removeClass("lm_window_blur");
 	},
 
 	/**
