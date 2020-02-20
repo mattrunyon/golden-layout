@@ -352,15 +352,15 @@ lm.utils.DragListener = function( eElement, nButtonCode ) {
 	this._fDown = lm.utils.fnBind( this.onMouseDown, this );
 
 
-	this._eElement.on( 'mousedown touchstart', this._fDown );
+	this._eElement.on( 'mousedown', this._fDown );
 };
 
 lm.utils.DragListener.timeout = null;
 
 lm.utils.copy( lm.utils.DragListener.prototype, {
 	destroy: function() {
-		this._eElement.unbind( 'mousedown touchstart', this._fDown );
-        this._oDocument.unbind( 'mouseup touchend', this._fUp );
+		this._eElement.unbind( 'mousedown', this._fDown );
+        this._oDocument.unbind( 'mouseup', this._fUp );
         this._eElement = null;
         this._oDocument = null;
         this._eBody = null;
@@ -369,14 +369,14 @@ lm.utils.copy( lm.utils.DragListener.prototype, {
 	onMouseDown: function( oEvent ) {
 		oEvent.preventDefault();
 
-		if( oEvent.button == 0 || oEvent.type === "touchstart" ) {
+		if( oEvent.button == 0 ) {
 			var coordinates = this._getCoordinates( oEvent );
 
 			this._nOriginalX = coordinates.x;
 			this._nOriginalY = coordinates.y;
 
-			this._oDocument.on( 'mousemove touchmove', this._fMove );
-			this._oDocument.one( 'mouseup touchend', this._fUp );
+			this._oDocument.on( 'mousemove', this._fMove );
+			this._oDocument.one( 'mouseup', this._fUp );
 
 			this._timeout = setTimeout( lm.utils.fnBind( this._startDrag, this ), this._nDelay );
 		}
@@ -413,8 +413,8 @@ lm.utils.copy( lm.utils.DragListener.prototype, {
 			this._eBody.removeClass( 'lm_dragging' );
 			this._eElement.removeClass( 'lm_dragging' );
 			this._oDocument.find( 'iframe' ).css( 'pointer-events', '' );
-			this._oDocument.unbind( 'mousemove touchmove', this._fMove );
-			this._oDocument.unbind( 'mouseup touchend', this._fUp );
+			this._oDocument.unbind( 'mousemove', this._fMove );
+			this._oDocument.unbind( 'mouseup', this._fUp );
 
 			if( this._bDragging === true ) {
 				this._bDragging = false;
@@ -466,6 +466,8 @@ lm.LayoutManager = function( config, container ) {
 	this._itemAreas = [];
 	this._resizeFunction = lm.utils.fnBind( this._onResize, this );
 	this._unloadFunction = lm.utils.fnBind( this._onUnload, this );
+	this._windowBlur = this._windowBlur.bind(this);
+	this._windowFocus = this._windowFocus.bind(this);
 	this._maximisedItem = null;
 	this._maximisePlaceholder = $( '<div class="lm_maximise_place"></div>' );
 	this._creationTimeoutPassed = false;
@@ -756,6 +758,7 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 		this._onUnload();
 		$( window ).off( 'resize', this._resizeFunction );
 		$( window ).off( 'unload beforeunload', this._unloadFunction );
+		$( window ).off( 'blur.lm' ).off( 'focus.lm' );
 		this.root.callDownwards( '_$destroy', [], true );
 		this.root.contentItems = [];
 		this.tabDropPlaceholder.remove();
@@ -1205,7 +1208,22 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 		if( this._isFullPage ) {
 			$( window ).resize( this._resizeFunction );
 		}
-		$( window ).on( 'unload beforeunload', this._unloadFunction );
+		$( window )
+			.on( 'unload beforeunload', this._unloadFunction )
+			.on("blur.lm", this._windowBlur)
+			.on("focus.lm", this._windowFocus);
+	},
+
+
+	/**
+	 * Handles setting a class based on window focus, useful for focus indicators
+	 */
+	_windowBlur: function(){
+		this.root.element.addClass("lm_window_blur");
+	}, 
+
+	_windowFocus: function(){
+		this.root.element.removeClass("lm_window_blur");
 	},
 
 	/**
@@ -1533,40 +1551,40 @@ lm.config.itemDefaultConfig = {
 	title: ''
 };
 lm.config.defaultConfig = {
-	openPopouts: [],
-	settings: {
-		hasHeaders: true,
-		constrainDragToContainer: true,
-		reorderEnabled: true,
-		selectionEnabled: false,
-		popoutWholeStack: false,
-		blockedPopoutsThrowError: true,
-		closePopoutsOnUnload: true,
-		showPopoutIcon: true,
-		showMaximiseIcon: true,
-		showCloseIcon: true,
-		responsiveMode: 'onload', // Can be onload, always, or none.
-		tabOverlapAllowance: 0, // maximum pixel overlap per tab
-		reorderOnTabMenuClick: true,
-		tabControlOffset: 10
-	},
-	dimensions: {
-		borderWidth: 5,
-		borderGrabWidth: 15,
-		minItemHeight: 10,
-		minItemWidth: 10,
-		headerHeight: 20,
-		dragProxyWidth: 300,
-		dragProxyHeight: 200
-	},
-	labels: {
-		close: 'close',
-		maximise: 'maximise',
-		minimise: 'minimise',
-		popout: 'open in new window',
-		popin: 'pop in',
-		tabDropdown: 'additional tabs'
-	}
+  openPopouts: [],
+  settings: {
+    hasHeaders: true,
+    constrainDragToContainer: true,
+    reorderEnabled: true,
+    selectionEnabled: false,
+    popoutWholeStack: false,
+    blockedPopoutsThrowError: true,
+    closePopoutsOnUnload: true,
+    showPopoutIcon: true,
+    showMaximiseIcon: true,
+    showCloseIcon: true,
+    responsiveMode: "onload", // Can be onload, always, or none.
+    tabOverlapAllowance: 0, // maximum pixel overlap per tab
+    reorderOnTabMenuClick: true,
+    tabControlOffset: 10
+  },
+  dimensions: {
+    borderWidth: 5,
+    borderGrabWidth: 15,
+    minItemHeight: 10,
+    minItemWidth: 10,
+    headerHeight: 20,
+    dragProxyWidth: 300,
+    dragProxyHeight: 200
+  },
+  labels: {
+    close: "Close",
+    maximise: "Maximise",
+    minimise: "Minimise",
+    popout: "Open in new window",
+    popin: "Pop in",
+    tabDropdown: "Additional tabs"
+  }
 };
 
 lm.container.ItemContainer = function( config, parent, layoutManager ) {
@@ -1580,11 +1598,13 @@ lm.container.ItemContainer = function( config, parent, layoutManager ) {
 	this.isHidden = false;
 
 	this._config = config;
-	this._element = $( [
-		'<div class="lm_item_container">',
-		'<div class="lm_content"></div>',
-		'</div>'
-	].join( '' ) );
+	this._element = $(
+		[
+			'<div class="lm_item_container">',
+				'<div class="lm_content" tabindex="-1"></div>',
+			'</div>'
+		].join("")
+	);
 
 	this._contentElement = this._element.find( '.lm_content' );
 };
@@ -2335,7 +2355,7 @@ lm.controls.Header = function( layoutManager, parent ) {
 
 	if( this.layoutManager.config.settings.selectionEnabled === true ) {
 		this.element.addClass( 'lm_selectable' );
-		this.element.on( 'click touchstart', lm.utils.fnBind( this._onHeaderClick, this ) );
+    	this.element.on( 'click', lm.utils.fnBind(this._onHeaderClick, this ) );
 	}
 
 	this.tabsContainer = this.element.find( '.lm_tabs' );
@@ -2348,8 +2368,8 @@ lm.controls.Header = function( layoutManager, parent ) {
 	this.activeContentItem = null;
 	this.closeButton = null;
 	this.tabDropdownButton = null;
-	this.hideAdditionalTabsDropdown = lm.utils.fnBind(this._hideAdditionalTabsDropdown, this);
-	$( document ).mouseup(this.hideAdditionalTabsDropdown);
+	this.showAdditionalTabsDropdown = lm.utils.fnBind( this._showAdditionalTabsDropdown, this );
+	this.hideAdditionalTabsDropdown = lm.utils.fnBind( this._hideAdditionalTabsDropdown, this );
 
 	this._lastVisibleTabIndex = -1;
 	this._tabControlOffset = this.layoutManager.config.settings.tabControlOffset;
@@ -2510,7 +2530,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		for( var i = 0; i < this.tabs.length; i++ ) {
 			this.tabs[ i ]._$destroy();
 		}
-		$( document ).off('mouseup', this.hideAdditionalTabsDropdown);
+    	$( document ).off('mouseup', this.hideAdditionalTabsDropdown);
 		this.element.remove();
 	},
 
@@ -2589,8 +2609,11 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	 *
 	 * @returns {void}
 	 */
-	_showAdditionalTabsDropdown: function() {
+  	_showAdditionalTabsDropdown: function(e) {
 		this.tabDropdownContainer.show();
+		this.tabDropdownButton.element.off(); // take off the click toggle
+		$(document).on("mouseup", this.hideAdditionalTabsDropdown);
+		this._updateAdditionalTabsDropdown();
 	},
 
 	/**
@@ -2598,8 +2621,37 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	 *
 	 * @returns {void}
 	 */
-	_hideAdditionalTabsDropdown: function( e ) {
+  _hideAdditionalTabsDropdown: function(e) {
 		this.tabDropdownContainer.hide();
+
+		// we do this in the next frame, so the click event doesn't get immediately triggered as part of this event cycle
+		window.requestAnimationFrame(
+		function() {
+			this.tabDropdownButton.element.on(
+			"click",
+			this.showAdditionalTabsDropdown
+			);
+		}.bind(this)
+		);
+		$(document).off("mouseup", this.hideAdditionalTabsDropdown);
+	},
+
+	/**
+	 * Ensures additional tab drop down doesn't overflow screen, and instead becomes scrollable.
+	 *
+	 * @returns {void}
+	 */
+	_updateAdditionalTabsDropdown: function() {
+		this.tabDropdownContainer.css("max-height", "");
+		var h = this.tabDropdownContainer[0].scrollHeight;
+		if (h === 0) return; // height can be zero if called on a hidden or empty list
+
+		var y = this.tabDropdownContainer.offset().top - $(window).scrollTop();
+
+		// set max height of tab dropdown to be less then the viewport height - dropdown offset
+		if (y + h > $(window).height()) {
+			this.tabDropdownContainer.css("max-height", $(window).height() - y - 10); // 10 being a padding value
+		}
 	},
 
 	/**
@@ -2646,6 +2698,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 
 		//Show the menu based on function argument
 		this.tabDropdownButton.element.toggle(showTabMenu === true);
+    	this._updateAdditionalTabsDropdown();
 
 		var size = function( val ) {
 			return val ? 'width' : 'height';
@@ -2747,8 +2800,8 @@ lm.controls.HeaderButton = function( header, label, cssClass, action ) {
 	this.element = $( '<li class="' + cssClass + '" title="' + label + '"></li>' );
 	this._header.on( 'destroy', this._$destroy, this );
 	this._action = action;
-	this.element.on( 'click touchstart', this._action );
-	this._header.controlsContainer.append( this.element );
+  this.element.on("click", this._action);
+  this._header.controlsContainer.append( this.element );
 };
 
 lm.utils.copy( lm.controls.HeaderButton.prototype, {
@@ -2832,12 +2885,14 @@ lm.controls.Tab = function( header, contentItem ) {
 
 	this._onTabClickFn = lm.utils.fnBind( this._onTabClick, this );
 	this._onCloseClickFn = lm.utils.fnBind( this._onCloseClick, this );
+	this._onTabContentFocusInFn = lm.utils.fnBind( this._onTabContentFocusIn, this );
+	this._onTabContentFocusOutFn = lm.utils.fnBind( this._onTabContentFocusOut, this );
 
-	this.element.on( 'mousedown touchstart', this._onTabClickFn );
+	this.element.on("mousedown ", this._onTabClickFn);
 
 	if( this.contentItem.config.isClosable ) {
-		this.closeElement.on( 'click touchstart', this._onCloseClickFn );
-		this.closeElement.on('mousedown', this._onCloseMousedown);
+		this.closeElement.on("click ", this._onCloseClickFn);
+		this.closeElement.on("mousedown", this._onCloseMousedown);
 	} else {
 		this.closeElement.remove();
 	}
@@ -2847,6 +2902,11 @@ lm.controls.Tab = function( header, contentItem ) {
 	this.contentItem.layoutManager.emit( 'tabCreated', this );
 
 	if( this.contentItem.isComponent ) {
+		// add focus class to tab when content
+		this.contentItem.container._contentElement
+			.on("focusin click", this._onTabContentFocusInFn)
+			.on("focusout", this._onTabContentFocusOutFn);
+
 		this.contentItem.container.tab = this;
 		this.contentItem.container.emit( 'tab', this );
 	}
@@ -2857,9 +2917,8 @@ lm.controls.Tab = function( header, contentItem ) {
  *
  * @type {String}
  */
-lm.controls.Tab._template = '<li class="lm_tab"><i class="lm_left"></i>' +
-	'<span class="lm_title"></span><div class="lm_close_tab"></div>' +
-	'<i class="lm_right"></i></li>';
+lm.controls.Tab._template =
+  '<li class="lm_tab"><span class="lm_title"></span><div class="lm_close_tab"></div></li>';
 
 lm.utils.copy( lm.controls.Tab.prototype, {
 
@@ -2903,8 +2962,11 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 * @returns {void}
 	 */
 	_$destroy: function() {
-		this.element.off( 'mousedown touchstart', this._onTabClickFn );
-		this.closeElement.off( 'click touchstart', this._onCloseClickFn );
+		this.element.off( 'mousedown', this._onTabClickFn );
+		this.closeElement.off( 'click', this._onCloseClickFn );
+		if( this.contentItem.isComponent ) {
+			this.contentItem.container._contentElement.off();
+		}
 		if( this._dragListener ) {
 			this.contentItem.off( 'destroy', this._dragListener.destroy, this._dragListener );
 			this._dragListener.off( 'dragStart', this._onDragStart );
@@ -2937,6 +2999,39 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	},
 
 	/**
+	 * Callback when the contentItem is focused in
+	 *
+	 * @param {jQuery DOM event} event
+	 *
+	 * @private
+	 * @returns {void}
+	 */
+	_onTabContentFocusIn: function() {
+		if ( !this.contentItem.container._contentElement[0].contains( document.activeElement ) ) {
+			this.contentItem.container._contentElement.focus();
+		}
+		this.element.addClass("lm_focusin");
+	},
+
+	/**
+	 * Callback when the contentItem is focused out
+	 *
+	 * @param {jQuery DOM event} event
+	 *
+	 * @private
+	 * @returns {void}
+	 */
+	_onTabContentFocusOut: function() {
+		if (
+		!this.contentItem.container._contentElement[0].contains(
+			document.activeElement
+		)
+		) {
+		this.element.removeClass("lm_focusin");
+		}
+	},
+
+	/**
 	 * Callback when the tab is clicked
 	 *
 	 * @param {jQuery DOM event} event
@@ -2946,12 +3041,17 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 */
 	_onTabClick: function( event ) {
 		// left mouse button or tap
-		if( event.button === 0 || event.type === 'touchstart' ) {
+    	if( event.button === 0 ) {
 			var activeContentItem = this.header.parent.getActiveContentItem();
 			if( this.contentItem !== activeContentItem ) {
-				this.header.parent.setActiveContentItem( this.contentItem );
+				this.header.parent.setActiveContentItem(this.contentItem);
 			}
-
+			else if( this.contentItem.isComponent 
+				&& !this.contentItem.container._contentElement[0].contains( document.activeElement ) 
+			) {
+				this.contentItem.container._contentElement.focus();
+				
+			}
 			// middle mouse button
 		} else if( event.button === 1 && this.contentItem.config.isClosable ) {
 			this._onCloseClick( event );
@@ -3736,6 +3836,9 @@ lm.utils.copy( lm.items.Component.prototype, {
 
 	_$show: function() {
 		this.container.show();
+		// focus the shown container element on show
+		// preventScroll isn't supported in safari, but also doesn't matter for illumon when 100% window
+		this.container._contentElement[0].focus({preventScroll: true });
 		lm.items.AbstractContentItem.prototype._$show.call( this );
 	},
 
