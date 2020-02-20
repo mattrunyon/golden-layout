@@ -31,12 +31,14 @@ lm.controls.Tab = function( header, contentItem ) {
 
 	this._onTabClickFn = lm.utils.fnBind( this._onTabClick, this );
 	this._onCloseClickFn = lm.utils.fnBind( this._onCloseClick, this );
+	this._onTabContentFocusInFn = lm.utils.fnBind( this._onTabContentFocusIn, this );
+	this._onTabContentFocusOutFn = lm.utils.fnBind( this._onTabContentFocusOut, this );
 
-	this.element.on( 'mousedown touchstart', this._onTabClickFn );
+	this.element.on("mousedown ", this._onTabClickFn);
 
 	if( this.contentItem.config.isClosable ) {
-		this.closeElement.on( 'click touchstart', this._onCloseClickFn );
-		this.closeElement.on('mousedown', this._onCloseMousedown);
+		this.closeElement.on("click ", this._onCloseClickFn);
+		this.closeElement.on("mousedown", this._onCloseMousedown);
 	} else {
 		this.closeElement.remove();
 	}
@@ -46,6 +48,11 @@ lm.controls.Tab = function( header, contentItem ) {
 	this.contentItem.layoutManager.emit( 'tabCreated', this );
 
 	if( this.contentItem.isComponent ) {
+		// add focus class to tab when content
+		this.contentItem.container._contentElement
+			.on("focusin click", this._onTabContentFocusInFn)
+			.on("focusout", this._onTabContentFocusOutFn);
+
 		this.contentItem.container.tab = this;
 		this.contentItem.container.emit( 'tab', this );
 	}
@@ -56,9 +63,8 @@ lm.controls.Tab = function( header, contentItem ) {
  *
  * @type {String}
  */
-lm.controls.Tab._template = '<li class="lm_tab"><i class="lm_left"></i>' +
-	'<span class="lm_title"></span><div class="lm_close_tab"></div>' +
-	'<i class="lm_right"></i></li>';
+lm.controls.Tab._template =
+  '<li class="lm_tab"><span class="lm_title"></span><div class="lm_close_tab"></div></li>';
 
 lm.utils.copy( lm.controls.Tab.prototype, {
 
@@ -102,8 +108,11 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 * @returns {void}
 	 */
 	_$destroy: function() {
-		this.element.off( 'mousedown touchstart', this._onTabClickFn );
-		this.closeElement.off( 'click touchstart', this._onCloseClickFn );
+		this.element.off( 'mousedown', this._onTabClickFn );
+		this.closeElement.off( 'click', this._onCloseClickFn );
+		if( this.contentItem.isComponent ) {
+			this.contentItem.container._contentElement.off();
+		}
 		if( this._dragListener ) {
 			this.contentItem.off( 'destroy', this._dragListener.destroy, this._dragListener );
 			this._dragListener.off( 'dragStart', this._onDragStart );
@@ -136,6 +145,43 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	},
 
 	/**
+	 * Callback when the contentItem is focused in
+	 *
+	 * @param {jQuery DOM event} event
+	 *
+	 * @private
+	 * @returns {void}
+	 */
+	_onTabContentFocusIn: function() {
+		if (
+		!this.contentItem.container._contentElement[0].contains(
+			document.activeElement
+		)
+		) {
+		this.contentItem.container._contentElement.focus();
+		}
+		this.element.addClass("lm_focusin");
+	},
+
+	/**
+	 * Callback when the contentItem is focused out
+	 *
+	 * @param {jQuery DOM event} event
+	 *
+	 * @private
+	 * @returns {void}
+	 */
+	_onTabContentFocusOut: function() {
+		if (
+		!this.contentItem.container._contentElement[0].contains(
+			document.activeElement
+		)
+		) {
+		this.element.removeClass("lm_focusin");
+		}
+	},
+
+	/**
 	 * Callback when the tab is clicked
 	 *
 	 * @param {jQuery DOM event} event
@@ -145,12 +191,11 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 */
 	_onTabClick: function( event ) {
 		// left mouse button or tap
-		if( event.button === 0 || event.type === 'touchstart' ) {
+    	if( event.button === 0 ) {
 			var activeContentItem = this.header.parent.getActiveContentItem();
 			if( this.contentItem !== activeContentItem ) {
-				this.header.parent.setActiveContentItem( this.contentItem );
+				this.header.parent.setActiveContentItem(this.contentItem);
 			}
-
 			// middle mouse button
 		} else if( event.button === 1 && this.contentItem.config.isClosable ) {
 			this._onCloseClick( event );

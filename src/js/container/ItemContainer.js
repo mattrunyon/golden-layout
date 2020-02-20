@@ -9,11 +9,13 @@ lm.container.ItemContainer = function( config, parent, layoutManager ) {
 	this.isHidden = false;
 
 	this._config = config;
-	this._element = $( [
-		'<div class="lm_item_container">',
-		'<div class="lm_content"></div>',
-		'</div>'
-	].join( '' ) );
+	this._element = $(
+		[
+			'<div class="lm_item_container">',
+				'<div class="lm_content" tabindex="-1"></div>',
+			'</div>'
+		].join("")
+	);
 
 	this._contentElement = this._element.find( '.lm_content' );
 };

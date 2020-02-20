@@ -12,7 +12,7 @@ lm.controls.Header = function( layoutManager, parent ) {
 
 	if( this.layoutManager.config.settings.selectionEnabled === true ) {
 		this.element.addClass( 'lm_selectable' );
-		this.element.on( 'click touchstart', lm.utils.fnBind( this._onHeaderClick, this ) );
+    	this.element.on( 'click', lm.utils.fnBind(this._onHeaderClick, this ) );
 	}
 
 	this.tabsContainer = this.element.find( '.lm_tabs' );
@@ -25,8 +25,8 @@ lm.controls.Header = function( layoutManager, parent ) {
 	this.activeContentItem = null;
 	this.closeButton = null;
 	this.tabDropdownButton = null;
-	this.hideAdditionalTabsDropdown = lm.utils.fnBind(this._hideAdditionalTabsDropdown, this);
-	$( document ).mouseup(this.hideAdditionalTabsDropdown);
+	this.showAdditionalTabsDropdown = lm.utils.fnBind( this._showAdditionalTabsDropdown, this );
+	this.hideAdditionalTabsDropdown = lm.utils.fnBind( this._hideAdditionalTabsDropdown, this );
 
 	this._lastVisibleTabIndex = -1;
 	this._tabControlOffset = this.layoutManager.config.settings.tabControlOffset;
@@ -187,7 +187,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		for( var i = 0; i < this.tabs.length; i++ ) {
 			this.tabs[ i ]._$destroy();
 		}
-		$( document ).off('mouseup', this.hideAdditionalTabsDropdown);
+    	$( document ).off('mouseup', this.hideAdditionalTabsDropdown);
 		this.element.remove();
 	},
 
@@ -266,8 +266,11 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	 *
 	 * @returns {void}
 	 */
-	_showAdditionalTabsDropdown: function() {
+  	_showAdditionalTabsDropdown: function(e) {
 		this.tabDropdownContainer.show();
+		this.tabDropdownButton.element.off(); // take off the click toggle
+		$(document).on("mouseup", this.hideAdditionalTabsDropdown);
+		this._updateAdditionalTabsDropdown();
 	},
 
 	/**
@@ -275,8 +278,37 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	 *
 	 * @returns {void}
 	 */
-	_hideAdditionalTabsDropdown: function( e ) {
+  _hideAdditionalTabsDropdown: function(e) {
 		this.tabDropdownContainer.hide();
+
+		// we do this in the next frame, so the click event doesn't get immediately triggered as part of this event cycle
+		window.requestAnimationFrame(
+		function() {
+			this.tabDropdownButton.element.on(
+			"click",
+			this.showAdditionalTabsDropdown
+			);
+		}.bind(this)
+		);
+		$(document).off("mouseup", this.hideAdditionalTabsDropdown);
+	},
+
+	/**
+	 * Ensures additional tab drop down doesn't overflow screen, and instead becomes scrollable.
+	 *
+	 * @returns {void}
+	 */
+	_updateAdditionalTabsDropdown: function() {
+		this.tabDropdownContainer.css("max-height", "");
+		var h = this.tabDropdownContainer[0].scrollHeight;
+		if (h === 0) return; // height can be zero if called on a hidden or empty list
+
+		var y = this.tabDropdownContainer.offset().top - $(window).scrollTop();
+
+		// set max height of tab dropdown to be less then the viewport height - dropdown offset
+		if (y + h > $(window).height()) {
+			this.tabDropdownContainer.css("max-height", $(window).height() - y - 10); // 10 being a padding value
+		}
 	},
 
 	/**
@@ -323,6 +355,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 
 		//Show the menu based on function argument
 		this.tabDropdownButton.element.toggle(showTabMenu === true);
+    	this._updateAdditionalTabsDropdown();
 
 		var size = function( val ) {
 			return val ? 'width' : 'height';
