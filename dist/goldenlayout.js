@@ -3013,7 +3013,7 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 * @private
 	 * @returns {void}
 	 */
-	_onTabContentFocusIn: function(e) {
+	_onTabContentFocusIn: function() {
 		if ( !this.contentItem.container._contentElement[0].contains( document.activeElement ) ) {
 			// jquery 3.4.0 and later, jquery method optimizes out the focus from 
 			// happening in proper order. Can use HTMLElement.focus() to avoid.
