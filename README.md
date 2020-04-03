@@ -8,6 +8,12 @@
 
 Add `golden-layout` to your bower.json, or [download](https://golden-layout.com/download/) the source.
 
+## Development
+
+Install packages `npm install` 
+Requires grunt, install cli tool with `npm install grunt -g`
+Start development with `grunt` and open index.html in a browser.
+
 ## Features
 
 * Native popup windows

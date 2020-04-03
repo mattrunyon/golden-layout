@@ -3000,7 +3000,14 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 
 	/**
 	 * Callback when the contentItem is focused in
-	 *
+	 * 
+	 * Why [0].focus():
+	 * https://github.com/jquery/jquery/commit/fe5f04de8fde9c69ed48283b99280aa6df3795c7
+	 * From jquery source: "If this is an inner synthetic event for an event with a bubbling surrogate (focus or blur), 
+	 * assume that the surrogate already propagated from triggering the native event and prevent that from happening again here. 
+	 * This technically gets the ordering wrong w.r.t. to `.trigger()` (in which the bubbling surrogate propagates *after* the 
+	 * non-bubbling base), but that seems less bad than duplication."
+	 * 
 	 * @param {jQuery DOM event} event
 	 *
 	 * @private
@@ -3008,7 +3015,9 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 */
 	_onTabContentFocusIn: function() {
 		if ( !this.contentItem.container._contentElement[0].contains( document.activeElement ) ) {
-			this.contentItem.container._contentElement.focus();
+			// jquery 3.4.0 and later, jquery method optimizes out the focus from 
+			// happening in proper order. Can use HTMLElement.focus() to avoid.
+			this.contentItem.container._contentElement[0].focus(); // [0] needed to use dom focus, not jquery method
 		}
 		this.element.addClass("lm_focusin");
 	},
@@ -3022,12 +3031,8 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 * @returns {void}
 	 */
 	_onTabContentFocusOut: function() {
-		if (
-		!this.contentItem.container._contentElement[0].contains(
-			document.activeElement
-		)
-		) {
-		this.element.removeClass("lm_focusin");
+		if (!this.contentItem.container._contentElement[0].contains( document.activeElement ) ) {
+			this.element.removeClass("lm_focusin");
 		}
 	},
 
