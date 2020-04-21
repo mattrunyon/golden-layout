@@ -57,6 +57,8 @@ lm.controls.DragProxy = function( x, y, dragListener, layoutManager, contentItem
 	this._height = this.element.height();
 
 	this._setDropPosition( x, y );
+
+	this._layoutManager.emit( 'itemPickedUp', this._contentItem );
 };
 
 lm.controls.DragProxy._template = '<div class="lm_dragProxy">' +
