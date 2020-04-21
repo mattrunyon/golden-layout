@@ -2103,6 +2103,8 @@ lm.controls.DragProxy = function( x, y, dragListener, layoutManager, contentItem
 	this._height = this.element.height();
 
 	this._setDropPosition( x, y );
+
+	this._layoutManager.emit( 'itemPickedUp', this._contentItem );
 };
 
 lm.controls.DragProxy._template = '<div class="lm_dragProxy">' +
@@ -2621,7 +2623,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	 *
 	 * @returns {void}
 	 */
-  _hideAdditionalTabsDropdown: function(e) {
+	_hideAdditionalTabsDropdown: function(e) {
 		this.tabDropdownContainer.hide();
 
 		// we do this in the next frame, so the click event doesn't get immediately triggered as part of this event cycle

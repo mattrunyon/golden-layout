@@ -278,7 +278,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	 *
 	 * @returns {void}
 	 */
-  _hideAdditionalTabsDropdown: function(e) {
+	_hideAdditionalTabsDropdown: function(e) {
 		this.tabDropdownContainer.hide();
 
 		// we do this in the next frame, so the click event doesn't get immediately triggered as part of this event cycle
