@@ -220,7 +220,12 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 */
 	_onCloseClick: function( event ) {
 		event.stopPropagation();
-		this.header.parent.removeChild( this.contentItem );
+		if(this.contentItem.isComponent) {
+			this.contentItem.container.close();
+		}
+		else {
+			this.header.parent.removeChild( this.contentItem );
+		}
 	},
 
 
