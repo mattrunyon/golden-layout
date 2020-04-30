@@ -2933,7 +2933,8 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 * @param {String} title can contain html
 	 */
 	setTitle: function( title ) {
-		this.element.attr( 'title', lm.utils.stripTags( title ) );
+		// Disabling for illumon project, we want to manage our own tooltips
+		// this.element.attr( 'title', lm.utils.stripTags( title ) );
 		this.titleElement.html( title );
 	},
 
@@ -3459,7 +3460,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	setTitle: function( title ) {
 		this.config.title = title;
 		this.emit( 'titleChanged', title );
-		this.emit( 'stateChanged' );
+		this.emitBubblingEvent( 'stateChanged' );
 	},
 
 	/**
