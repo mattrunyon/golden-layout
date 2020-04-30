@@ -77,7 +77,8 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 * @param {String} title can contain html
 	 */
 	setTitle: function( title ) {
-		this.element.attr( 'title', lm.utils.stripTags( title ) );
+		// Disabling for illumon project, we want to manage our own tooltips
+		// this.element.attr( 'title', lm.utils.stripTags( title ) );
 		this.titleElement.html( title );
 	},
 

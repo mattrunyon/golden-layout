@@ -286,7 +286,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	setTitle: function( title ) {
 		this.config.title = title;
 		this.emit( 'titleChanged', title );
-		this.emit( 'stateChanged' );
+		this.emitBubblingEvent( 'stateChanged' );
 	},
 
 	/**
