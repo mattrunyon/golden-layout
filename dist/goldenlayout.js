@@ -2326,10 +2326,6 @@ lm.utils.copy( lm.controls.DropTargetIndicator.prototype, {
 		this.element.remove();
 	},
 
-	highlight: function( x1, y1, x2, y2 ) {
-		this.highlightArea( { x1: x1, y1: y1, x2: x2, y2: y2 } );
-	},
-
 	highlightArea: function( area ) {
 		this.element.css( {
 			left: area.x1,
@@ -4930,13 +4926,18 @@ lm.utils.copy( lm.items.Stack.prototype, {
 		}
 
 		for( i = 0; i < tabsLength; i++ ) {
+			if (!this.header.tabs[ i ].element.is(":visible")) { 
+				break;
+			}
 			tabElement = this.header.tabs[ i ].element;
 			offset = tabElement.offset();
 			if( this._sided ) {
+				// vertical tabs
 				tabLeft = offset.top;
 				tabTop = offset.left;
 				tabWidth = tabElement.height();
 			} else {
+				// horizontal tabs
 				tabLeft = offset.left;
 				tabTop = offset.top;
 				tabWidth = tabElement.width();
