@@ -11,14 +11,14 @@ lm.config.defaultConfig = {
     showPopoutIcon: true,
     showMaximiseIcon: true,
     showCloseIcon: true,
-    responsiveMode: "onload", // Can be onload, always, or none.
+    responsiveMode: 'onload', // Can be onload, always, or none.
     tabOverlapAllowance: 0, // maximum pixel overlap per tab
-    reorderOnTabMenuClick: true,
+    // reorderOnTabMenuClick: true, // illumon disabled
     tabControlOffset: 10
   },
   dimensions: {
     borderWidth: 5,
-    borderGrabWidth: 15,
+    borderGrabWidth: 10,
     minItemHeight: 10,
     minItemWidth: 10,
     headerHeight: 20,
@@ -26,11 +26,13 @@ lm.config.defaultConfig = {
     dragProxyHeight: 200
   },
   labels: {
-    close: "Close",
-    maximise: "Maximise",
-    minimise: "Minimise",
-    popout: "Open in new window",
-    popin: "Pop in",
-    tabDropdown: "Additional tabs"
+    close: 'Close',
+    maximise: 'Maximise',
+    minimise: 'Minimise',
+    popout: 'Open in new window',
+    popin: 'Pop in',
+    tabDropdown: 'Additional tabs',
+    tabNextLabel: 'Next',
+    tabPreviousLabel: 'Previous'
   }
 };
