@@ -34,11 +34,11 @@ lm.controls.Tab = function( header, contentItem ) {
 	this._onTabContentFocusInFn = lm.utils.fnBind( this._onTabContentFocusIn, this );
 	this._onTabContentFocusOutFn = lm.utils.fnBind( this._onTabContentFocusOut, this );
 
-	this.element.on("mousedown ", this._onTabClickFn);
+	this.element.on('mousedown', this._onTabClickFn);
 
 	if( this.contentItem.config.isClosable ) {
-		this.closeElement.on("click ", this._onCloseClickFn);
-		this.closeElement.on("mousedown", this._onCloseMousedown);
+		this.closeElement.on('click', this._onCloseClickFn);
+		this.closeElement.on('mousedown', this._onCloseMousedown);
 	} else {
 		this.closeElement.remove();
 	}
@@ -50,8 +50,8 @@ lm.controls.Tab = function( header, contentItem ) {
 	if( this.contentItem.isComponent ) {
 		// add focus class to tab when content
 		this.contentItem.container._contentElement
-			.on("focusin click", this._onTabContentFocusInFn)
-			.on("focusout", this._onTabContentFocusOutFn);
+			.on('focusin click', this._onTabContentFocusInFn)
+			.on('focusout', this._onTabContentFocusOutFn);
 
 		this.contentItem.container.tab = this;
 		this.contentItem.container.emit( 'tab', this );
@@ -64,7 +64,11 @@ lm.controls.Tab = function( header, contentItem ) {
  * @type {String}
  */
 lm.controls.Tab._template =
-  '<li class="lm_tab"><span class="lm_title"></span><div class="lm_close_tab"></div></li>';
+  ['<li class="lm_tab">',
+	  '<span class="lm_title_before"></span>',
+	  '<span class="lm_title"></span>',
+	  '<div class="lm_close_tab"></div>',
+	'</li>'].join('');
 
 lm.utils.copy( lm.controls.Tab.prototype, {
 
@@ -135,6 +139,7 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 		if( this.contentItem.parent.isMaximised === true ) {
 			this.contentItem.parent.toggleMaximise();
 		}
+
 		new lm.controls.DragProxy(
 			x,
 			y,
@@ -151,9 +156,9 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 * Why [0].focus():
 	 * https://github.com/jquery/jquery/commit/fe5f04de8fde9c69ed48283b99280aa6df3795c7
 	 * From jquery source: "If this is an inner synthetic event for an event with a bubbling surrogate (focus or blur), 
-	 * assume that the surrogate already propagated from triggering the native event and prevent that from happening again here. 
-	 * This technically gets the ordering wrong w.r.t. to `.trigger()` (in which the bubbling surrogate propagates *after* the 
-	 * non-bubbling base), but that seems less bad than duplication."
+	 * assume that the surrogate already propagated from triggering the native event and prevent that from happening
+	 * again here. This technically gets the ordering wrong w.r.t. to `.trigger()` (in which the bubbling surrogate 
+	 * propagates *after* the non-bubbling base), but that seems less bad than duplication."
 	 * 
 	 * @param {jQuery DOM event} event
 	 *
@@ -166,7 +171,7 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 			// happening in proper order. Can use HTMLElement.focus() to avoid.
 			this.contentItem.container._contentElement[0].focus(); // [0] needed to use dom focus, not jquery method
 		}
-		this.element.addClass("lm_focusin");
+		this.element.addClass('lm_focusin');
 	},
 
 	/**
@@ -179,7 +184,7 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 */
 	_onTabContentFocusOut: function() {
 		if (!this.contentItem.container._contentElement[0].contains( document.activeElement ) ) {
-			this.element.removeClass("lm_focusin");
+			this.element.removeClass('lm_focusin');
 		}
 	},
 
@@ -193,17 +198,26 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 */
 	_onTabClick: function( event ) {
 		// left mouse button or tap
-    	if( event.button === 0 ) {
+    	if( !event || event.button === 0 ) {
 			var activeContentItem = this.header.parent.getActiveContentItem();
 			if( this.contentItem !== activeContentItem ) {
 				this.header.parent.setActiveContentItem(this.contentItem);
 			}
-			else if( this.contentItem.isComponent 
-				&& !this.contentItem.container._contentElement[0].contains( document.activeElement ) 
+			else if( this.contentItem.isComponent &&
+				!this.contentItem.container._contentElement[0].contains( document.activeElement ) 
 			) {
 				this.contentItem.container._contentElement.focus();
-				
 			}
+
+			// might have been called from the dropdown
+			this.header._hideAdditionalTabsDropdown();
+
+			// makes sure clicked tabs scrollintoview (either those partially offscreen or in dropdown)
+			this.element.get(0).scrollIntoView({
+				inline: 'nearest',
+				// behavior: 'smooth'
+			 });
+			 
 			// middle mouse button
 		} else if( event.button === 1 && this.contentItem.config.isClosable ) {
 			this._onCloseClick( event );

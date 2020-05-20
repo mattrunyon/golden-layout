@@ -82,9 +82,11 @@
 
 // Pane Header (container of Tabs for each pane)
 .lm_header {
-  overflow: visible;
-  position: relative;
+  display: flex;
+  justify-content: space-between;
+  max-width: 100%;
   z-index: 1;
+  position: relative;
 
   [class^="lm_"] {
     box-sizing: content-box !important;
@@ -92,8 +94,7 @@
 
   // Pane controls (popout, maximize, minimize, close)
   .lm_controls {
-    position: absolute;
-    right: 3px;
+    display: flex;
     user-select: none;
 
     > li {
@@ -102,6 +103,11 @@
       width: @width4;
       height: @height5;
       text-align: center;
+    }
+
+    > li[disabled] {
+      cursor: default;
+      opacity: 0.1;
     }
   }
 
@@ -112,23 +118,28 @@
   }
 
   .lm_tabs {
-    position: absolute;
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
   }
 
   // Single Tab container. A single Tab is set for each pane, a group of Tabs are contained in ".lm_header"
   .lm_tab {
     cursor: pointer;
-    float: left;
     height: @height2;
     margin-top: 1px;
     padding: 0px 10px 5px;
     padding-right: 25px;
     position: relative;
+    min-width: 0;
+    flex-shrink: 0;
 
     .lm_title {
       display: inline-block;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      max-width: 100%;
     }
 
     // Close Tab Icon
@@ -232,10 +243,7 @@
 }
 
 .lm_drop_tab_placeholder {
-  float: left;
-  width: @width2;
-  height: @height3;
-  visibility: hidden;
+  flex-shrink: 0;
 }
 
 // Dropdown arrow for additional tabs when too many to be displayed
@@ -260,14 +268,12 @@
     overflow-y: auto;
     overflow-x: hidden;
 
-    .lm_tab {
-      float: none;
-      padding-right: 10px;
-      margin: 0;
+    .lm_tabs {
+      flex-direction: column;
+    }
 
-      .lm_title {
-        width: 100px;
-      }
+    .lm_tab {
+      padding-right: 10px;
     }
 
     .lm_close_tab {
@@ -286,6 +292,7 @@
   top: 0;
   left: 0;
   z-index: 30;
+  pointer-events: none;
 
   .lm_header {
     background: transparent;
@@ -302,6 +309,7 @@
   display: none;
   position: absolute;
   z-index: 20;
+  pointer-events: none;
 
   // Inner Placeholder
   .lm_inner {

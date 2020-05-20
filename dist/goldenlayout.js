@@ -332,7 +332,7 @@ lm.utils.DragListener = function( eElement, nButtonCode ) {
 	/**
 	 * The delay after which to start the drag in milliseconds
 	 */
-	this._nDelay = 200;
+	this._nDelay = 400;
 
 	/**
 	 * The distance the mouse needs to be moved to qualify as a drag
@@ -369,7 +369,7 @@ lm.utils.copy( lm.utils.DragListener.prototype, {
 	onMouseDown: function( oEvent ) {
 		oEvent.preventDefault();
 
-		if( oEvent.button == 0 ) {
+		if( oEvent.button === 0 ) {
 			var coordinates = this._getCoordinates( oEvent );
 
 			this._nOriginalX = coordinates.x;
@@ -1563,14 +1563,14 @@ lm.config.defaultConfig = {
     showPopoutIcon: true,
     showMaximiseIcon: true,
     showCloseIcon: true,
-    responsiveMode: "onload", // Can be onload, always, or none.
+    responsiveMode: 'onload', // Can be onload, always, or none.
     tabOverlapAllowance: 0, // maximum pixel overlap per tab
-    reorderOnTabMenuClick: true,
+    // reorderOnTabMenuClick: true, // illumon disabled
     tabControlOffset: 10
   },
   dimensions: {
     borderWidth: 5,
-    borderGrabWidth: 15,
+    borderGrabWidth: 10,
     minItemHeight: 10,
     minItemWidth: 10,
     headerHeight: 20,
@@ -1578,12 +1578,14 @@ lm.config.defaultConfig = {
     dragProxyHeight: 200
   },
   labels: {
-    close: "Close",
-    maximise: "Maximise",
-    minimise: "Minimise",
-    popout: "Open in new window",
-    popin: "Pop in",
-    tabDropdown: "Additional tabs"
+    close: 'Close',
+    maximise: 'Maximise',
+    minimise: 'Minimise',
+    popout: 'Open in new window',
+    popin: 'Pop in',
+    tabDropdown: 'Additional tabs',
+    tabNextLabel: 'Next',
+    tabPreviousLabel: 'Previous'
   }
 };
 
@@ -2074,6 +2076,12 @@ lm.controls.DragProxy = function( x, y, dragListener, layoutManager, contentItem
 	this._dragListener.on( 'drag', this._onDrag, this );
 	this._dragListener.on( 'dragStop', this._onDrop, this );
 
+	// set the inserted drag placeholder to be the size of the tab removed
+	if (this._contentItem.tab && this._contentItem.tab.element) {	
+		this._layoutManager.tabDropPlaceholder.width(this._contentItem.tab.element.outerWidth(true));
+		this._layoutManager.tabDropPlaceholder.height(this._contentItem.tab.element.outerHeight(true));
+	}
+
 	this.element = $( lm.controls.DragProxy._template );
 	if( originalParent && originalParent._side ) {
 		this._sided = originalParent._sided;
@@ -2357,30 +2365,102 @@ lm.controls.Header = function( layoutManager, parent ) {
 	}
 
 	this.tabsContainer = this.element.find( '.lm_tabs' );
+
 	this.tabDropdownContainer = this.element.find( '.lm_tabdropdown_list' );
 	this.tabDropdownContainer.hide();
+	this.tabDropdownSearch = this.element.find( '.lm_tabdropdown_search input' );
+	this.tabDropdownList = null;
+
+	this._handleFilterInput = this._handleFilterInput.bind(this);
+	this._handleFilterKeydown = this._handleFilterKeydown.bind(this);
+	this.tabDropdownSearch.on('input', this._handleFilterInput);
+	this.tabDropdownSearch.on('keydown', this._handleFilterKeydown);
+
 	this.controlsContainer = this.element.find( '.lm_controls' );
 	this.parent = parent;
 	this.parent.on( 'resize', this._updateTabSizes, this );
 	this.tabs = [];
 	this.activeContentItem = null;
 	this.closeButton = null;
+
 	this.tabDropdownButton = null;
-	this.showAdditionalTabsDropdown = lm.utils.fnBind( this._showAdditionalTabsDropdown, this );
-	this.hideAdditionalTabsDropdown = lm.utils.fnBind( this._hideAdditionalTabsDropdown, this );
+	this.tabNextButton =  $( lm.controls.Header._nextButtonTemplate );
+	this.tabPreviousButton =  $( lm.controls.Header._previousButtonTemplate );
+
+	this._handleItemPickedUp = this._handleItemPickedUp.bind(this);
+	this._handleItemPickedDropped = this._handleItemPickedDropped.bind(this);
+
+	this._handleNextMouseEnter = this._handleNextMouseEnter.bind(this);
+	this._handleNextMouseLeave = this._handleNextMouseLeave.bind(this);
+	this._handlePreviousMouseEnter = this._handlePreviousMouseEnter.bind(this);
+	this._handlePreviousMouseLeave = this._handlePreviousMouseLeave.bind(this);
+	this._handleScrollRepeat = this._handleScrollRepeat.bind(this);
+	this._handleNextButtonMouseDown = this._handleNextButtonMouseDown.bind(this);
+	this._handlePreviousButtonMouseDown = this._handlePreviousButtonMouseDown.bind(this);
+	this._handleScrollButtonMouseDown = this._handleScrollButtonMouseDown.bind(this);
+	this._handleScrollButtonMouseUp = this._handleScrollButtonMouseUp.bind(this);
+	this._handleScrollEvent = this._handleScrollEvent.bind(this);
+
+	this.tabNextButton.on('mousedown', this._handleNextButtonMouseDown);
+	this.tabPreviousButton.on('mousedown', this._handlePreviousButtonMouseDown);
+	this.tabsContainer.on('scroll', this._handleScrollEvent);
+
+
+	// use for scroll repeat
+	this.holdTimer = null;
+	this.rAF = null;
+
+	// mouse hold timeout to act as hold instead of click
+	this.CLICK_TIMEOUT = 500;
+	// mouse hold acceleration
+	this.START_SPEED = 0.01;
+	this.ACCELERATION = 0.0005;
+
+	this.layoutManager.on('itemPickedUp', this._handleItemPickedUp);
+	this.layoutManager.on('itemDropped', this._handleItemPickedDropped);
+
+	this.isDraggingTab = false;
+	this.isOverflowing = false;
+	this.isDropdownShown = false;
+	this.dropdownKeyIndex = 0;
+
+	// append previous button template
+	this.tabsContainer.before(this.tabPreviousButton);
+	// change reference to just the li, not the wrapping ul
+	this.tabPreviousButton = this.tabPreviousButton.find('>:first-child');
+	this.tabPreviousButton.hide();
+
+	this._showAdditionalTabsDropdown = this._showAdditionalTabsDropdown.bind(this);
+	this._hideAdditionalTabsDropdown = this._hideAdditionalTabsDropdown.bind(this);
 
 	this._lastVisibleTabIndex = -1;
 	this._tabControlOffset = this.layoutManager.config.settings.tabControlOffset;
 	this._createControls();
+
+
+
 };
 
 lm.controls.Header._template = [
 	'<div class="lm_header">',
-	'<ul class="lm_tabs"></ul>',
-	'<ul class="lm_controls"></ul>',
-	'<ul class="lm_tabdropdown_list"></ul>',
+		'<ul class="lm_tabs"></ul>',
+		'<ul class="lm_controls"></ul>',
+		'<ul class="lm_tabdropdown_list">',
+			'<li class="lm_tabdropdown_search"><input type="text" placeholder="Find tab..."></li>',
+		'</ul>',
 	'</div>'
 ].join( '' );
+
+lm.controls.Header._previousButtonTemplate = [
+	'<ul class="lm_controls">',
+		'<li class="lm_tabpreviousbutton"></li>',
+	'</ul>'
+].join( '' );
+
+lm.controls.Header._nextButtonTemplate = [
+	'<li class="lm_tabnextbutton"></li>',
+].join( '' );
+
 
 lm.utils.copy( lm.controls.Header.prototype, {
 
@@ -2450,9 +2530,9 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	 * @param {lm.item.AbstractContentItem} contentItem
 	 */
 	setActiveContentItem: function( contentItem ) {
-		var i, j, isActive, activeTab;
+		var isActive;
 
-		for( i = 0; i < this.tabs.length; i++ ) {
+		for(var i = 0; i < this.tabs.length; i++ ) {
 			isActive = this.tabs[ i ].contentItem === contentItem;
 			this.tabs[ i ].setActive( isActive );
 			if( isActive === true ) {
@@ -2461,21 +2541,13 @@ lm.utils.copy( lm.controls.Header.prototype, {
 			}
 		}
 
-		if (this.layoutManager.config.settings.reorderOnTabMenuClick) {
-			/**
-			 * If the tab selected was in the dropdown, move everything down one to make way for this one to be the first.
-			 * This will make sure the most used tabs stay visible.
-			 */
-			if (this._lastVisibleTabIndex !== -1 && this.parent.config.activeItemIndex > this._lastVisibleTabIndex) {
-				activeTab = this.tabs[this.parent.config.activeItemIndex];
-				for ( j = this.parent.config.activeItemIndex; j > 0; j-- ) {
-					this.tabs[j] = this.tabs[j - 1];
-				}
-				this.tabs[0]                       = activeTab;
-				this.parent.config.activeItemIndex = 0;
-			}
-		}
+		// makes sure dropped tabs are scrollintoview, removed any re-ordering
+		this.tabs[this.parent.config.activeItemIndex].element.get(0).scrollIntoView({
+			inline: 'nearest',
+			behavior: 'smooth'
+		});
 
+		this._hideAdditionalTabsDropdown();
 		this._updateTabSizes();
 		this.parent.emitBubblingEvent( 'stateChanged' );
 	},
@@ -2491,12 +2563,211 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		var previous = this.parent._header.show;
 		if( previous && !this.parent._side )
 			previous = 'top';
-		if( position !== undefined && this.parent._header.show != position ) {
+		if( position !== undefined && this.parent._header.show !== position ) {
 			this.parent._header.show = position;
 			this.parent._setupHeaderPosition();
 		}
 		return previous;
 	},
+
+	// Manually attaching so wheel can be passive instead of jquery .on
+	// _attachWheelListener is called by parent init
+	_attachWheelListener: function() {
+		this.tabsContainer.get(0).addEventListener('wheel', this._handleWheelEvent, {passive: true} );
+	},
+
+	// detach called by this.destroy
+	_detachWheelListener: function() {
+		this.tabsContainer.get(0).removeEventListener('wheel', this._handleWheelEvent, {passive: true} );
+	},
+
+	_handleWheelEvent: function( event ) {
+		var target = event.currentTarget;
+		
+		// we only care about the larger of the two deltas
+		var delta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+		
+		// jshint
+		/* globals WheelEvent */
+		if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+			// Users can set OS to be in deltaMode page
+			// scrolly by page units as pixels
+			delta *= this.tabsContainer.innerWidhth();
+		} else if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+			// chrome goes 100px per 3 lines, and firefox would go 102 per 3 (17 lineheight * 3 lines * 2)
+			delta *= 100/3;
+		}
+		target.scrollLeft += Math.round(delta);
+	},
+
+	// on scroll we need to check if side error might need to be disabled
+	_handleScrollEvent: function(){
+		this._checkScrollArrows();
+	},
+	
+	// when and item is picked up, attach mouse enter listeners to next/previous buttons
+	_handleItemPickedUp: function() {
+		this.isDraggingTab = true;
+		this.controlsContainer.on('mouseenter', this._handleNextMouseEnter);
+		this.tabPreviousButton.on('mouseenter', this._handlePreviousMouseEnter);
+	},
+
+	// when an item is dropped remove listeners and cancel animation
+	_handleItemPickedDropped: function() {
+		this.isDraggingTab = false;
+		this.rAF = window.cancelAnimationFrame(this.rAF);
+		this.controlsContainer.off('mouseenter', this._handleNextMouseEnter);
+		this.controlsContainer.off('mouseleave', this._handleNextMouseLeave);
+		this.tabPreviousButton.off('mouseenter', this._handlePreviousMouseEnter);
+		this.tabPreviousButton.off('mouseleave', this._handlePreviousMouseLeave);
+	},
+
+	// on next/previous enter start scroll repeat animation loop
+	// and attach a listener looking for mouseleave
+	// cancel animation on mouse leave, and remove leave listener
+	_handleNextMouseEnter: function() {
+		this.controlsContainer.on('mouseleave', this._handleNextMouseLeave);
+		this._handleScrollRepeat('right', this.tabsContainer.scrollLeft());
+	},
+	
+	_handlePreviousMouseEnter: function() {
+		this.tabPreviousButton.on('mouseleave', this._handlePreviousMouseLeave);
+		this._handleScrollRepeat('left', this.tabsContainer.scrollLeft());
+	},
+
+	_handleNextMouseLeave: function() {
+		this.rAF =  window.cancelAnimationFrame(this.rAF);
+		this.controlsContainer.off('mouseleave', this._handleNextMouseLeave);
+	},
+
+	_handlePreviousMouseLeave: function() {
+		this.rAF = window.cancelAnimationFrame(this.rAF);
+		this.tabPreviousButton.off('mouseleave', this._handlePreviousMouseLeave);
+	},
+
+	// scroll one tab to the right on mouse down
+	// start scrollRepeat if mouse is held down
+	_handleNextButtonMouseDown: function() {
+		var rightOffscreenChild;
+		for (var i = 0; i <  this.tabs.length; i += 1) {
+		  if (
+			this.tabs[i].element.get(0).offsetLeft >
+			this.tabsContainer.get(0).offsetWidth + this.tabsContainer.scrollLeft()
+		  ) {
+			rightOffscreenChild = this.tabs[i].element.get(0);
+			break;
+		  }
+		}
+	
+		if (rightOffscreenChild) {
+		  rightOffscreenChild.scrollIntoView({ behavior: 'smooth', inline: 'nearest' });
+		  this._handleScrollButtonMouseDown('right');
+		} else {
+			this.tabsContainer.get(0).scrollLeft = this.tabsContainer.get(0).scrollWidth;
+		}	
+	},
+
+	// scroll left by one tab
+	// start scrollRepeat if mouse is held down
+	_handlePreviousButtonMouseDown: function() {
+		var leftOffscreenChild;
+		for (var i = this.tabs.length - 1; i >= 0; i -= 1) {
+		  if (this.tabs[i].element.get(0).offsetLeft < this.tabsContainer.scrollLeft()) {
+			leftOffscreenChild = this.tabs[i].element.get(0);
+			break;
+		  }
+		}
+		if (leftOffscreenChild) {
+		  leftOffscreenChild.scrollIntoView({ behavior: 'smooth', inline: 'start' });
+		  this._handleScrollButtonMouseDown('left');
+		} else {
+			this.tabsContainer.get(0).scrollLeft = 0;
+		}
+	},
+
+	// when hold timer is reached start scroll repeat anim loop
+	// cancel it when mouse up happens anywhere
+	_handleScrollButtonMouseDown: function(direction) {
+		// closure so that scrollLeft is value at end of timer, and not start of timer
+		this.holdTimer = setTimeout(function(){
+			this._handleScrollRepeat(direction,this.tabsContainer.scrollLeft(), 100); // kickstart deltaX to be faster
+		  }.bind(this),
+		  this.CLICK_TIMEOUT
+		);
+		window.addEventListener('mouseup', this._handleScrollButtonMouseUp);
+	},
+	
+	// cancel scroll repeat
+	_handleScrollButtonMouseUp: function() {
+		this.holdTimer = clearTimeout(this.holdTimer);
+		this.rAF = cancelAnimationFrame(this.rAF);
+		window.removeEventListener('mouseup', this._handleScrollButtonMouseUp);
+	},
+
+
+	// disables scroll arrow if at edge of scroll area
+	_checkScrollArrows: function() {
+		if (this.tabsContainer.scrollLeft() === 0) {
+			this.tabPreviousButton.first().attr('disabled', true);
+		}
+		else if (
+			this.tabsContainer.scrollLeft() + this.tabsContainer.innerWidth() ===
+			this.tabsContainer.get(0).scrollWidth
+		){
+			this.tabNextButton.attr('disabled', true);
+		}
+		else {
+			this.tabNextButton.attr('disabled', false);
+			this.tabPreviousButton.first().attr('disabled', false);
+		}
+	},
+
+	// scrolls the tab header container on drag tab over control buttons
+	// or on press and hold of scroll arrows at either end
+	// called recurisevly in an animation loop until cancelled
+	// or directional end is reached
+	_handleScrollRepeat: function(direction, startX, deltaX, prevTimestamp) {
+		if (!deltaX) deltaX = 0;
+
+		var tabContainerRect = this.tabsContainer.get(0).getBoundingClientRect();
+		if (direction === 'left') {
+			this.tabsContainer.scrollLeft(startX - deltaX);
+			if (this.isDraggingTab) {
+				// update drag placeholder
+				this.parent._highlightHeaderDropZone(tabContainerRect.left - 1);
+			}
+			// stop loop at left edge
+			if (this.tabsContainer.scrollLeft() === 0) {
+				this._checkScrollArrows();
+				return;
+			}
+		} else if (direction === 'right') {
+			this.tabsContainer.scrollLeft(startX + deltaX);
+			if (this.isDraggingTab) {
+				// update drag placeholder
+				this.parent._highlightHeaderDropZone(tabContainerRect.right + 1);
+			}
+			// stop loop at right edge
+			if (this.tabsContainer.scrollLeft() + this.tabsContainer.innerWidth() ===
+				this.tabsContainer.get(0).scrollWidth) 
+			{
+				this._checkScrollArrows();
+				return;
+			}
+		}
+	
+		// setup animation loop, scroll with acceleration
+		window.cancelAnimationFrame(this.rAF);
+		this.rAF = window.requestAnimationFrame(function(timestamp){
+			var startTime = prevTimestamp || timestamp;
+			var deltaTime = timestamp - startTime;
+			var newDeltaX = this.START_SPEED * deltaTime + 0.5 * this.ACCELERATION * (deltaTime * deltaTime);
+			newDeltaX = Math.min(newDeltaX, this.tabsContainer.get(0).scrollWidth);
+			this._handleScrollRepeat(direction, startX, newDeltaX, startTime);
+		}.bind(this));
+	
+	},
+
 
 	/**
 	 * Programmatically set closability.
@@ -2508,7 +2779,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	 */
 	_$setClosable: function( isClosable ) {
 		if( this.closeButton && this._isClosable() ) {
-			this.closeButton.element[ isClosable ? "show" : "hide" ]();
+			this.closeButton.element[ isClosable ? 'show' : 'hide' ]();
 			return true;
 		}
 
@@ -2528,7 +2799,14 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		for( var i = 0; i < this.tabs.length; i++ ) {
 			this.tabs[ i ]._$destroy();
 		}
-    	$( document ).off('mouseup', this.hideAdditionalTabsDropdown);
+
+		this._detachWheelListener();
+		this._handleItemPickedDropped();
+
+		$( document ).off('mouseup', this._hideAdditionalTabsDropdown);
+		this.tabDropdownSearch.off('input', this._handleFilterInput);
+		this.tabDropdownSearch.off('keydown', this._handleFilterKeydown);
+		
 		this.element.remove();
 	},
 
@@ -2541,6 +2819,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		if( name in this.parent._header )
 			return this.parent._header[ name ];
 	},
+
 	/**
 	 * Creates the popout, maximise and close buttons in the header's top right corner
 	 *
@@ -2555,15 +2834,23 @@ lm.utils.copy( lm.controls.Header.prototype, {
 			maximise,
 			maximiseButton,
 			tabDropdownLabel,
-			showTabDropdown;
+			tabOverflowNextLabel,
+			tabOverflowPreviousLabel;
 
 		/**
 		 * Dropdown to show additional tabs.
 		 */
-		showTabDropdown = lm.utils.fnBind( this._showAdditionalTabsDropdown, this );
+		
 		tabDropdownLabel = this.layoutManager.config.labels.tabDropdown;
-		this.tabDropdownButton = new lm.controls.HeaderButton( this, tabDropdownLabel, 'lm_tabdropdown', showTabDropdown );
+		tabOverflowNextLabel = this.layoutManager.config.labels.tabNextLabel;
+		tabOverflowPreviousLabel = this.layoutManager.config.labels.tabPreviousLabel;
+
+		this.tabDropdownButton = 
+			new lm.controls.HeaderButton( this, tabDropdownLabel, 'lm_tabdropdown', this._showAdditionalTabsDropdown );
 		this.tabDropdownButton.element.hide();
+		
+		this.controlsContainer.prepend(this.tabNextButton);
+		this.tabNextButton.hide();
 
 		/**
 		 * Popout control to launch component in new window.
@@ -2607,31 +2894,150 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	 *
 	 * @returns {void}
 	 */
-  	_showAdditionalTabsDropdown: function(e) {
+  	_showAdditionalTabsDropdown: function() {
+		if (this.isDropdownShown) {
+			this._hideAdditionalTabsDropdown();
+			return;
+		}
+
+		// clone tabs in the current list, with event listeners
+		// and add them to the drop down
+		this.tabDropdownList = 
+			this.tabsContainer.clone(true)
+				.appendTo( this.tabDropdownContainer )
+				.children().removeClass('lm_active');
+
+		// show the dropdown
 		this.tabDropdownContainer.show();
-		this.tabDropdownButton.element.off(); // take off the click toggle
-		$(document).on("mouseup", this.hideAdditionalTabsDropdown);
-		this._updateAdditionalTabsDropdown();
+		this.isDropdownShown = true;
+
+		// focus the dropdown filter list input
+		this.tabDropdownSearch.val('').focus();
+		this.dropdownKeyIndex = 0;
+		this.tabDropdownList.eq(this.dropdownKeyIndex).addClass('lm_keyboard_active');
+		
+		$(document).on('mousedown', this._hideAdditionalTabsDropdown);
+		this._updateAdditionalTabsDropdown();		
+	},
+
+	// enables synthetic keyboard navigation of the list
+	_handleFilterKeydown: function(e) {
+		var i;
+
+		if(this.dropdownKeyIndex === -1) return;
+
+		if(e.key === 'Escape') {
+			this._hideAdditionalTabsDropdown();
+			return;
+		}
+		
+		if (e.key === 'Enter') {
+			// simulate "click"
+			this._hideAdditionalTabsDropdown();
+			this.tabs[this.dropdownKeyIndex]._onTabClick();
+			return;
+		}
+		
+		var newIndex = -1;
+		if (e.key === 'ArrowDown') {
+			this.tabDropdownList.eq(this.dropdownKeyIndex).removeClass('lm_keyboard_active');
+			// find the next visible index
+			for (i = this.dropdownKeyIndex + 1 ; i < this.tabDropdownList.length; i++) {
+				if ( this.tabDropdownList.eq(i).css('display') !== 'none') {
+					newIndex = i;
+					break;
+				}
+			}
+			// if found a new index, assign as drop index
+			if (newIndex !== -1) {
+				this.dropdownKeyIndex = newIndex;
+			}
+			// no next index found, loop our arrow behaviour around to start
+			else {
+				for (i = 0; i < this.dropdownKeyIndex; i++) {
+					if ( this.tabDropdownList.eq(i).css('display') !== 'none' ) {
+						this.dropdownKeyIndex = i;
+						break;
+					}
+				}
+			}
+			this.tabDropdownList.eq(this.dropdownKeyIndex).addClass('lm_keyboard_active');
+		} else if (e.key === 'ArrowUp') {
+			this.tabDropdownList.eq(this.dropdownKeyIndex).removeClass('lm_keyboard_active');
+			// find the previous visible index
+			for (i = this.dropdownKeyIndex - 1; i >= 0; i--) {
+				if ( this.tabDropdownList.eq(i).css('display') !== 'none') {
+					newIndex = i;
+					break;
+				}
+			}
+
+			if (newIndex !== -1) {
+				this.dropdownKeyIndex = newIndex;
+			}
+			// no prev index found, loop our arrow behaviour around to end
+			else {
+				for (i = this.tabDropdownList.length - 1; i > this.dropdownKeyIndex; i--) {
+					if ( this.tabDropdownList.eq(i).css('display') !== 'none' ) {
+						this.dropdownKeyIndex = i;
+						break;
+					}
+				}
+			}
+			this.tabDropdownList.eq(this.dropdownKeyIndex).addClass('lm_keyboard_active');
+		}
+	},
+
+	// filters the list
+	_handleFilterInput: function(event) {
+		// reset keyboard index
+		this.tabDropdownList.eq(this.dropdownKeyIndex).removeClass('lm_keyboard_active');
+		this.dropdownKeyIndex = -1;
+
+		for (var i = 0; i < this.tabDropdownList.length; i++) {
+			if (this.tabs[i].contentItem.config.title.toLowerCase().indexOf(event.target.value.toLowerCase()) !== -1) {
+				this.tabDropdownList.eq(i).css('display', '');
+				if(this.dropdownKeyIndex === -1) this.dropdownKeyIndex = i;
+			}
+			else {
+				this.tabDropdownList.eq(i).css('display', 'none');
+			}
+		}
+
+		if(this.dropdownKeyIndex !== -1) {
+			this.tabDropdownList.eq(this.dropdownKeyIndex).addClass('lm_keyboard_active');
+		}	
 	},
 
 	/**
-	 * Hides drop down for additional tabs when there are too many to display.
+	 * Hides drop down for additional tabs when needed. It is called via mousedown
+	 * event on document when list is open, or programmatically when drag starts,
+	 * or active tab changes etc.
 	 *
 	 * @returns {void}
 	 */
-	_hideAdditionalTabsDropdown: function(e) {
-		this.tabDropdownContainer.hide();
+	_hideAdditionalTabsDropdown: function(event) {
 
-		// we do this in the next frame, so the click event doesn't get immediately triggered as part of this event cycle
-		window.requestAnimationFrame(
-		function() {
-			this.tabDropdownButton.element.on(
-			"click",
-			this.showAdditionalTabsDropdown
-			);
-		}.bind(this)
-		);
-		$(document).off("mouseup", this.hideAdditionalTabsDropdown);
+		// dropdown already closed, do nothing
+		if (!this.isDropdownShown) return;
+		
+		
+		if ( event && this.tabDropdownContainer.get(0).contains(event.target) ) {
+			// prevent events occuring inside the list from causing a close
+			return;
+		}
+		else if (event && this.tabDropdownButton.element.get(0) === event.target) {
+			// do nothing on the mouse down so that the click event can close, rather then re-open
+			return;
+		}
+
+		this.tabDropdownContainer.hide();
+		this.isDropdownShown = false;
+
+		// remove the current tab list
+		this.tabDropdownContainer.find('.lm_tabs').remove();
+
+		$(document).off('mousedown', this._hideAdditionalTabsDropdown);
 	},
 
 	/**
@@ -2640,7 +3046,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	 * @returns {void}
 	 */
 	_updateAdditionalTabsDropdown: function() {
-		this.tabDropdownContainer.css("max-height", "");
+		this.tabDropdownContainer.css('max-height', '');
 		var h = this.tabDropdownContainer[0].scrollHeight;
 		if (h === 0) return; // height can be zero if called on a hidden or empty list
 
@@ -2648,7 +3054,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 
 		// set max height of tab dropdown to be less then the viewport height - dropdown offset
 		if (y + h > $(window).height()) {
-			this.tabDropdownContainer.css("max-height", $(window).height() - y - 10); // 10 being a padding value
+			this.tabDropdownContainer.css('max-height', $(window).height() - y - 10); // 10 being a padding value
 		}
 	},
 
@@ -2689,107 +3095,29 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	 *
 	 * @returns {void}
 	 */
-	_updateTabSizes: function(showTabMenu) {
+	_updateTabSizes: function() {
+
 		if( this.tabs.length === 0 ) {
 			return;
 		}
 
-		//Show the menu based on function argument
-		this.tabDropdownButton.element.toggle(showTabMenu === true);
-    	this._updateAdditionalTabsDropdown();
-
-		var size = function( val ) {
-			return val ? 'width' : 'height';
-		};
-		this.element.css( size( !this.parent._sided ), '' );
-		this.element[ size( this.parent._sided ) ]( this.layoutManager.config.dimensions.headerHeight );
-		var availableWidth = this.element.outerWidth() - this.controlsContainer.outerWidth() - this._tabControlOffset,
-			cumulativeTabWidth = 0,
-			visibleTabWidth = 0,
-			tabElement,
-			i,
-			j,
-			marginLeft,
-			overlap = 0,
-			tabWidth,
-			tabOverlapAllowance = this.layoutManager.config.settings.tabOverlapAllowance,
-			tabOverlapAllowanceExceeded = false,
-			activeIndex = (this.activeContentItem ? this.tabs.indexOf(this.activeContentItem.tab) : 0),
-			activeTab = this.tabs[activeIndex];
-		if( this.parent._sided )
-			availableWidth = this.element.outerHeight() - this.controlsContainer.outerHeight() - this._tabControlOffset;
-		this._lastVisibleTabIndex = -1;
-
-		for( i = 0; i < this.tabs.length; i++ ) {
-			tabElement = this.tabs[ i ].element;
-
-			//Put the tab in the tabContainer so its true width can be checked
-			this.tabsContainer.append( tabElement );
-			tabWidth = tabElement.outerWidth() + parseInt( tabElement.css( 'margin-right' ), 10 );
-
-			cumulativeTabWidth += tabWidth;
-
-			//Include the active tab's width if it isn't already
-			//This is to ensure there is room to show the active tab
-			if (activeIndex <= i) {
-				visibleTabWidth = cumulativeTabWidth;
-			} else {
-				visibleTabWidth = cumulativeTabWidth + activeTab.element.outerWidth() + parseInt(activeTab.element.css('margin-right'), 10);
-			}
-
-			// If the tabs won't fit, check the overlap allowance.
-			if( visibleTabWidth > availableWidth ) {
-
-				//Once allowance is exceeded, all remaining tabs go to menu.
-				if (!tabOverlapAllowanceExceeded) {
-
-					//No overlap for first tab or active tab
-					//Overlap spreads among non-active, non-first tabs
-					if (activeIndex > 0 && activeIndex <= i) {
-						overlap = ( visibleTabWidth - availableWidth ) / (i - 1);
-					} else {
-						overlap = ( visibleTabWidth - availableWidth ) / i;
-					}
-
-					//Check overlap against allowance.
-					if (overlap < tabOverlapAllowance) {
-						for ( j = 0; j <= i; j++ ) {
-							marginLeft = (j !== activeIndex && j !== 0) ? '-' + overlap + 'px' : '';
-							this.tabs[j].element.css({'z-index': i - j, 'margin-left': marginLeft});
-						}
-						this._lastVisibleTabIndex = i;
-						this.tabsContainer.append(tabElement);
-					} else {
-						tabOverlapAllowanceExceeded = true;
-					}
-
-				} else if (i === activeIndex) {
-					//Active tab should show even if allowance exceeded. (We left room.)
-					tabElement.css({'z-index': 'auto', 'margin-left': ''});
-					this.tabsContainer.append(tabElement);
-				}
-
-				if (tabOverlapAllowanceExceeded && i !== activeIndex) {
-					if (showTabMenu) {
-						//Tab menu already shown, so we just add to it.
-						tabElement.css({'z-index': 'auto', 'margin-left': ''});
-						this.tabDropdownContainer.append(tabElement);
-					} else {
-						//We now know the tab menu must be shown, so we have to recalculate everything.
-						this._updateTabSizes(true);
-						return;
-					}
-				}
-
-			}
-			else {
-				this._lastVisibleTabIndex = i;
-				tabElement.css({'z-index': 'auto', 'margin-left': ''});
-				this.tabsContainer.append( tabElement );
-			}
+		if (!this.isOverflowing && this.tabsContainer.get(0).scrollWidth > this.tabsContainer.get(0).clientWidth  ) {
+			this.tabDropdownButton.element.show();
+			this.tabNextButton.show();
+			this.tabPreviousButton.show();
+			this.isOverflowing = true;
+		}
+		else if (this.isOverflowing && this.tabsContainer.get(0).scrollWidth <= this.tabsContainer.get(0).clientWidth) {
+			this.tabDropdownButton.element.hide();
+			this.tabNextButton.hide();
+			this.tabPreviousButton.hide();
+			this.isOverflowing = false;
 		}
 
-	}
+		if (this.isOverflowing) this._checkScrollArrows();
+		
+	},
+
 } );
 
 
@@ -2798,8 +3126,8 @@ lm.controls.HeaderButton = function( header, label, cssClass, action ) {
 	this.element = $( '<li class="' + cssClass + '" title="' + label + '"></li>' );
 	this._header.on( 'destroy', this._$destroy, this );
 	this._action = action;
-  this.element.on("click", this._action);
-  this._header.controlsContainer.append( this.element );
+	this.element.on('click', this._action);
+	this._header.controlsContainer.append( this.element );
 };
 
 lm.utils.copy( lm.controls.HeaderButton.prototype, {
@@ -2886,11 +3214,11 @@ lm.controls.Tab = function( header, contentItem ) {
 	this._onTabContentFocusInFn = lm.utils.fnBind( this._onTabContentFocusIn, this );
 	this._onTabContentFocusOutFn = lm.utils.fnBind( this._onTabContentFocusOut, this );
 
-	this.element.on("mousedown ", this._onTabClickFn);
+	this.element.on('mousedown', this._onTabClickFn);
 
 	if( this.contentItem.config.isClosable ) {
-		this.closeElement.on("click ", this._onCloseClickFn);
-		this.closeElement.on("mousedown", this._onCloseMousedown);
+		this.closeElement.on('click', this._onCloseClickFn);
+		this.closeElement.on('mousedown', this._onCloseMousedown);
 	} else {
 		this.closeElement.remove();
 	}
@@ -2902,8 +3230,8 @@ lm.controls.Tab = function( header, contentItem ) {
 	if( this.contentItem.isComponent ) {
 		// add focus class to tab when content
 		this.contentItem.container._contentElement
-			.on("focusin click", this._onTabContentFocusInFn)
-			.on("focusout", this._onTabContentFocusOutFn);
+			.on('focusin click', this._onTabContentFocusInFn)
+			.on('focusout', this._onTabContentFocusOutFn);
 
 		this.contentItem.container.tab = this;
 		this.contentItem.container.emit( 'tab', this );
@@ -2916,7 +3244,11 @@ lm.controls.Tab = function( header, contentItem ) {
  * @type {String}
  */
 lm.controls.Tab._template =
-  '<li class="lm_tab"><span class="lm_title"></span><div class="lm_close_tab"></div></li>';
+  ['<li class="lm_tab">',
+	  '<span class="lm_title_before"></span>',
+	  '<span class="lm_title"></span>',
+	  '<div class="lm_close_tab"></div>',
+	'</li>'].join('');
 
 lm.utils.copy( lm.controls.Tab.prototype, {
 
@@ -2987,6 +3319,7 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 		if( this.contentItem.parent.isMaximised === true ) {
 			this.contentItem.parent.toggleMaximise();
 		}
+
 		new lm.controls.DragProxy(
 			x,
 			y,
@@ -3003,9 +3336,9 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 * Why [0].focus():
 	 * https://github.com/jquery/jquery/commit/fe5f04de8fde9c69ed48283b99280aa6df3795c7
 	 * From jquery source: "If this is an inner synthetic event for an event with a bubbling surrogate (focus or blur), 
-	 * assume that the surrogate already propagated from triggering the native event and prevent that from happening again here. 
-	 * This technically gets the ordering wrong w.r.t. to `.trigger()` (in which the bubbling surrogate propagates *after* the 
-	 * non-bubbling base), but that seems less bad than duplication."
+	 * assume that the surrogate already propagated from triggering the native event and prevent that from happening
+	 * again here. This technically gets the ordering wrong w.r.t. to `.trigger()` (in which the bubbling surrogate 
+	 * propagates *after* the non-bubbling base), but that seems less bad than duplication."
 	 * 
 	 * @param {jQuery DOM event} event
 	 *
@@ -3018,7 +3351,7 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 			// happening in proper order. Can use HTMLElement.focus() to avoid.
 			this.contentItem.container._contentElement[0].focus(); // [0] needed to use dom focus, not jquery method
 		}
-		this.element.addClass("lm_focusin");
+		this.element.addClass('lm_focusin');
 	},
 
 	/**
@@ -3031,7 +3364,7 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 */
 	_onTabContentFocusOut: function() {
 		if (!this.contentItem.container._contentElement[0].contains( document.activeElement ) ) {
-			this.element.removeClass("lm_focusin");
+			this.element.removeClass('lm_focusin');
 		}
 	},
 
@@ -3045,17 +3378,26 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 	 */
 	_onTabClick: function( event ) {
 		// left mouse button or tap
-    	if( event.button === 0 ) {
+    	if( !event || event.button === 0 ) {
 			var activeContentItem = this.header.parent.getActiveContentItem();
 			if( this.contentItem !== activeContentItem ) {
 				this.header.parent.setActiveContentItem(this.contentItem);
 			}
-			else if( this.contentItem.isComponent 
-				&& !this.contentItem.container._contentElement[0].contains( document.activeElement ) 
+			else if( this.contentItem.isComponent &&
+				!this.contentItem.container._contentElement[0].contains( document.activeElement ) 
 			) {
 				this.contentItem.container._contentElement.focus();
-				
 			}
+
+			// might have been called from the dropdown
+			this.header._hideAdditionalTabsDropdown();
+
+			// makes sure clicked tabs scrollintoview (either those partially offscreen or in dropdown)
+			this.element.get(0).scrollIntoView({
+				inline: 'nearest',
+				// behavior: 'smooth'
+			 });
+			 
 			// middle mouse button
 		} else if( event.button === 1 && this.contentItem.config.isClosable ) {
 			this._onCloseClick( event );
@@ -4496,6 +4838,7 @@ lm.items.Stack = function( layoutManager, config, parent ) {
 
 	this.element = $( '<div class="lm_item lm_stack"></div>' );
 	this._activeContentItem = null;
+	
 	var cfg = layoutManager.config;
 	this._header = { // defaults' reconstruction from old configuration style
 		show: cfg.settings.hasHeaders === true && config.hasHeaders !== false,
@@ -4504,7 +4847,9 @@ lm.items.Stack = function( layoutManager, config, parent ) {
 		close: cfg.settings.showCloseIcon && cfg.labels.close,
 		minimise: cfg.labels.minimise,
 	};
-	if( cfg.header ) // load simplified version of header configuration (https://github.com/deepstreamIO/golden-layout/pull/245)
+
+	// load simplified version of header configuration (https://github.com/deepstreamIO/golden-layout/pull/245)
+	if( cfg.header ) 
 		lm.utils.copy( this._header, cfg.header );
 	if( config.header ) // load from stack
 		lm.utils.copy( this._header, config.header );
@@ -4525,6 +4870,7 @@ lm.items.Stack = function( layoutManager, config, parent ) {
 	this.element.append( this.childElementContainer );
 	this._setupHeaderPosition();
 	this._$validateClosability();
+
 };
 
 lm.utils.extend( lm.items.Stack, lm.items.AbstractContentItem );
@@ -4551,6 +4897,8 @@ lm.utils.copy( lm.items.Stack.prototype, {
 		var i, initialItem;
 
 		if( this.isInitialised === true ) return;
+
+		this.header._attachWheelListener();
 
 		lm.items.AbstractContentItem.prototype._$init.call( this );
 
@@ -4626,8 +4974,7 @@ lm.utils.copy( lm.items.Stack.prototype, {
 	 * @returns {void}
 	 */
 	_$validateClosability: function() {
-		var contentItem,
-			isClosable,
+		var isClosable,
 			len,
 			i;
 
@@ -4765,7 +5112,7 @@ lm.utils.copy( lm.items.Stack.prototype, {
 
 				if( segment === 'header' ) {
 					this._dropSegment = 'header';
-					this._highlightHeaderDropZone( this._sided ? y : x );
+					this._highlightHeaderDropZone( x , y );
 				} else {
 					this._resetHeaderDropZone();
 					this._highlightBodyDropZone( segment );
@@ -4899,21 +5246,16 @@ lm.utils.copy( lm.items.Stack.prototype, {
 	},
 
 	_highlightHeaderDropZone: function( x ) {
-		var i,
-			tabElement,
-			tabsLength = this.header.tabs.length,
-			isAboveTab = false,
-			tabTop,
-			tabLeft,
-			offset,
-			placeHolderLeft,
-			headerOffset,
-			tabWidth,
-			halfX;
+		var tabsLength = this.header.tabs.length;
+		var	tabElement = null;
+		var	tabRect = null;
+
+		// I've omitted code for side edge tabs here
+		// illumon doesn't need it, will slowly pull that code out elsewhere too
 
 		// Empty stack
 		if( tabsLength === 0 ) {
-			headerOffset = this.header.element.offset();
+			var headerOffset = this.header.element.offset();
 
 			this.layoutManager.dropTargetIndicator.highlightArea( {
 				x1: headerOffset.left,
@@ -4925,63 +5267,59 @@ lm.utils.copy( lm.items.Stack.prototype, {
 			return;
 		}
 
-		for( i = 0; i < tabsLength; i++ ) {
-			if (!this.header.tabs[ i ].element.is(":visible")) { 
-				break;
+		var tabsContainer =  this.header.tabsContainer;
+		var tabsContainerRect = tabsContainer.get(0).getBoundingClientRect();
+		var placeholderRect = this.layoutManager.tabDropPlaceholder.get(0).getBoundingClientRect();
+		
+		if (x < tabsContainerRect.left) {
+			// is over left tab controls button
+			//  move x to a new point to inside left edge of container
+			x = tabsContainerRect.left + 1;
+		}
+		else if (x > tabsContainerRect.right) {
+			// is over right tab controls button
+			// move x to a new point to inside right edge of container
+			x = tabsContainerRect.right - 1;
+		}
+		
+		// if its not inide a placeholder, 
+		if ( !(placeholderRect.left < x && x < placeholderRect.right) ) {
+			// which tab is it over ...
+			for(var i = 0; i < tabsLength; i++ ) {
+				tabElement = this.header.tabs[ i ].element;
+				tabRect = tabElement.get(0).getBoundingClientRect();
+				if ( tabRect.left < x && x < tabRect.right) {
+					this._dropIndex = i;
+					break;
+				}
 			}
-			tabElement = this.header.tabs[ i ].element;
-			offset = tabElement.offset();
-			if( this._sided ) {
-				// vertical tabs
-				tabLeft = offset.top;
-				tabTop = offset.left;
-				tabWidth = tabElement.height();
-			} else {
-				// horizontal tabs
-				tabLeft = offset.left;
-				tabTop = offset.top;
-				tabWidth = tabElement.width();
-			}
 
-			if( x > tabLeft && x < tabLeft + tabWidth ) {
-				isAboveTab = true;
-				break;
+			// we have tabRect at this x,y from the loop above
+			if( tabElement &&  x < tabRect.left + tabRect.width * 0.5 ) {
+				// mostly before an element, insert placeholder before
+				tabElement.before( this.layoutManager.tabDropPlaceholder );
+			}
+			else if (tabElement) {
+				// x is likely after the lhe last item, position after and increase drop index
+				this._dropIndex = Math.min(this._dropIndex + 1, tabsLength);
+				tabElement.after( this.layoutManager.tabDropPlaceholder );
 			}
 		}
 
-		if( isAboveTab === false && x < tabLeft ) {
-			return;
-		}
-
-		halfX = tabLeft + tabWidth / 2;
-
-		if( x < halfX ) {
-			this._dropIndex = i;
-			tabElement.before( this.layoutManager.tabDropPlaceholder );
-		} else {
-			this._dropIndex = Math.min( i + 1, tabsLength );
-			tabElement.after( this.layoutManager.tabDropPlaceholder );
-		}
-
-
-		if( this._sided ) {
-			placeHolderTop = this.layoutManager.tabDropPlaceholder.offset().top;
-			this.layoutManager.dropTargetIndicator.highlightArea( {
-				x1: tabTop,
-				x2: tabTop + tabElement.innerHeight(),
-				y1: placeHolderTop,
-				y2: placeHolderTop + this.layoutManager.tabDropPlaceholder.width()
-			} );
-			return;
-		}
-		placeHolderLeft = this.layoutManager.tabDropPlaceholder.offset().left;
-
+		var placeHolderLeft = this.layoutManager.tabDropPlaceholder.offset().left; 
+		placeHolderLeft = Math.max(placeHolderLeft, this.header.tabsContainer.offset().left);
+		var placeHolderRight = placeHolderLeft + this.layoutManager.tabDropPlaceholder.width();
+		placeHolderRight = Math.min(
+			placeHolderRight, this.header.tabsContainer.offset().left + 
+			this.header.tabsContainer.innerWidth()
+		);
 		this.layoutManager.dropTargetIndicator.highlightArea( {
 			x1: placeHolderLeft,
-			x2: placeHolderLeft + this.layoutManager.tabDropPlaceholder.width(),
-			y1: tabTop,
-			y2: tabTop + tabElement.innerHeight()
+			x2: placeHolderRight,
+			y1: this.header.element.offset().top,
+			y2: this.header.element.offset().top + this.header.element.innerHeight()
 		} );
+
 	},
 
 	_resetHeaderDropZone: function() {
