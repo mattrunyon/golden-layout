@@ -9,7 +9,7 @@ lm.utils.DragListener = function( eElement, nButtonCode ) {
 	/**
 	 * The delay after which to start the drag in milliseconds
 	 */
-	this._nDelay = 200;
+	this._nDelay = 400;
 
 	/**
 	 * The distance the mouse needs to be moved to qualify as a drag
@@ -46,7 +46,7 @@ lm.utils.copy( lm.utils.DragListener.prototype, {
 	onMouseDown: function( oEvent ) {
 		oEvent.preventDefault();
 
-		if( oEvent.button == 0 ) {
+		if( oEvent.button === 0 ) {
 			var coordinates = this._getCoordinates( oEvent );
 
 			this._nOriginalX = coordinates.x;
