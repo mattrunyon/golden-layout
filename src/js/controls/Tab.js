@@ -215,7 +215,8 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 			// makes sure clicked tabs scrollintoview (either those partially offscreen or in dropdown)
 			this.element.get(0).scrollIntoView({
 				inline: 'nearest',
-				// behavior: 'smooth'
+				// behaviour smooth is not possible here, as when a tab becomes active it may attempt to take focus
+				// which interupts any scroll behaviour from completeting
 			 });
 			 
 			// middle mouse button
