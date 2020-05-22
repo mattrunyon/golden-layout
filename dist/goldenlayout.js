@@ -2546,7 +2546,6 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		// makes sure dropped tabs are scrollintoview, removed any re-ordering
 		this.tabs[this.parent.config.activeItemIndex].element.get(0).scrollIntoView({
 			inline: 'nearest',
-			behavior: 'smooth'
 		});
 
 		this._hideAdditionalTabsDropdown();
@@ -2961,7 +2960,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 			this.tabDropdownList.eq(this.dropdownKeyIndex).removeClass('lm_keyboard_active');
 			this.dropdownKeyIndex = getNextDropdownIndex(this.dropdownKeyIndex, -1, this.tabDropdownList);
 			this.tabDropdownList.eq(this.dropdownKeyIndex).addClass('lm_keyboard_active');
-
+			
 		}
 	},
 
