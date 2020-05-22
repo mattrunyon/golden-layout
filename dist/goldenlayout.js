@@ -1210,8 +1210,8 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 		}
 		$( window )
 			.on( 'unload beforeunload', this._unloadFunction )
-			.on("blur.lm", this._windowBlur)
-			.on("focus.lm", this._windowFocus);
+			.on('blur.lm', this._windowBlur)
+			.on('focus.lm', this._windowFocus);
 	},
 
 
@@ -1219,11 +1219,11 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 	 * Handles setting a class based on window focus, useful for focus indicators
 	 */
 	_windowBlur: function(){
-		this.root.element.addClass("lm_window_blur");
+		this.root.element.addClass('lm_window_blur');
 	}, 
 
 	_windowFocus: function(){
-		this.root.element.removeClass("lm_window_blur");
+		this.root.element.removeClass('lm_window_blur');
 	},
 
 	/**
@@ -2388,7 +2388,7 @@ lm.controls.Header = function( layoutManager, parent ) {
 	this.tabPreviousButton =  $( lm.controls.Header._previousButtonTemplate );
 
 	this._handleItemPickedUp = this._handleItemPickedUp.bind(this);
-	this._handleItemPickedDropped = this._handleItemPickedDropped.bind(this);
+	this._handleItemDropped = this._handleItemDropped.bind(this);
 
 	this._handleNextMouseEnter = this._handleNextMouseEnter.bind(this);
 	this._handleNextMouseLeave = this._handleNextMouseLeave.bind(this);
@@ -2415,9 +2415,11 @@ lm.controls.Header = function( layoutManager, parent ) {
 	// mouse hold acceleration
 	this.START_SPEED = 0.01;
 	this.ACCELERATION = 0.0005;
+	this.SCROLL_LEFT = 'left';
+	this.SCROLL_RIGHT = 'right';
 
 	this.layoutManager.on('itemPickedUp', this._handleItemPickedUp);
-	this.layoutManager.on('itemDropped', this._handleItemPickedDropped);
+	this.layoutManager.on('itemDropped', this._handleItemDropped);
 
 	this.isDraggingTab = false;
 	this.isOverflowing = false;
@@ -2613,7 +2615,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	},
 
 	// when an item is dropped remove listeners and cancel animation
-	_handleItemPickedDropped: function() {
+	_handleItemDropped: function() {
 		this.isDraggingTab = false;
 		this.rAF = window.cancelAnimationFrame(this.rAF);
 		this.controlsContainer.off('mouseenter', this._handleNextMouseEnter);
@@ -2627,12 +2629,12 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	// cancel animation on mouse leave, and remove leave listener
 	_handleNextMouseEnter: function() {
 		this.controlsContainer.on('mouseleave', this._handleNextMouseLeave);
-		this._handleScrollRepeat('right', this.tabsContainer.scrollLeft());
+		this._handleScrollRepeat(this.SCROLL_RIGHT, this.tabsContainer.scrollLeft());
 	},
 	
 	_handlePreviousMouseEnter: function() {
 		this.tabPreviousButton.on('mouseleave', this._handlePreviousMouseLeave);
-		this._handleScrollRepeat('left', this.tabsContainer.scrollLeft());
+		this._handleScrollRepeat(this.SCROLL_LEFT, this.tabsContainer.scrollLeft());
 	},
 
 	_handleNextMouseLeave: function() {
@@ -2649,7 +2651,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	// start scrollRepeat if mouse is held down
 	_handleNextButtonMouseDown: function() {
 		var rightOffscreenChild;
-		for (var i = 0; i <  this.tabs.length; i += 1) {
+		for (var i = 0; i < this.tabs.length; i += 1) {
 		  if (
 			this.tabs[i].element.get(0).offsetLeft >
 			this.tabsContainer.get(0).offsetWidth + this.tabsContainer.scrollLeft()
@@ -2661,7 +2663,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	
 		if (rightOffscreenChild) {
 		  rightOffscreenChild.scrollIntoView({ behavior: 'smooth', inline: 'nearest' });
-		  this._handleScrollButtonMouseDown('right');
+		  this._handleScrollButtonMouseDown(this.SCROLL_RIGHT);
 		} else {
 			this.tabsContainer.get(0).scrollLeft = this.tabsContainer.get(0).scrollWidth;
 		}	
@@ -2679,7 +2681,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		}
 		if (leftOffscreenChild) {
 		  leftOffscreenChild.scrollIntoView({ behavior: 'smooth', inline: 'start' });
-		  this._handleScrollButtonMouseDown('left');
+		  this._handleScrollButtonMouseDown(this.SCROLL_LEFT);
 		} else {
 			this.tabsContainer.get(0).scrollLeft = 0;
 		}
@@ -2730,7 +2732,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		if (!deltaX) deltaX = 0;
 
 		var tabContainerRect = this.tabsContainer.get(0).getBoundingClientRect();
-		if (direction === 'left') {
+		if (direction === this.SCROLL_LEFT) {
 			this.tabsContainer.scrollLeft(startX - deltaX);
 			if (this.isDraggingTab) {
 				// update drag placeholder
@@ -2741,7 +2743,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 				this._checkScrollArrows();
 				return;
 			}
-		} else if (direction === 'right') {
+		} else if (direction === this.SCROLL_RIGHT) {
 			this.tabsContainer.scrollLeft(startX + deltaX);
 			if (this.isDraggingTab) {
 				// update drag placeholder
@@ -2801,7 +2803,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		}
 
 		this._detachWheelListener();
-		this._handleItemPickedDropped();
+		this._handleItemDropped();
 
 		$( document ).off('mouseup', this._hideAdditionalTabsDropdown);
 		this.tabDropdownSearch.off('input', this._handleFilterInput);
@@ -2922,8 +2924,6 @@ lm.utils.copy( lm.controls.Header.prototype, {
 
 	// enables synthetic keyboard navigation of the list
 	_handleFilterKeydown: function(e) {
-		var i;
-
 		if(this.dropdownKeyIndex === -1) return;
 
 		if(e.key === 'Escape') {
@@ -2938,53 +2938,30 @@ lm.utils.copy( lm.controls.Header.prototype, {
 			return;
 		}
 		
-		var newIndex = -1;
+		function getNextDropdownIndex(startIndex, delta, tabDropdownList) {
+			if (tabDropdownList.length < 2) {
+				return -1;
+			}
+			var i = (startIndex + delta + tabDropdownList.length) % tabDropdownList.length;
+			while (i !== startIndex) {
+				if ( tabDropdownList.eq(i).css('display') !== 'none' ) {
+					return i;
+				}
+				i = (i + delta + tabDropdownList.length) % tabDropdownList.length;
+			}
+			
+			return startIndex;
+		}
+
 		if (e.key === 'ArrowDown') {
 			this.tabDropdownList.eq(this.dropdownKeyIndex).removeClass('lm_keyboard_active');
-			// find the next visible index
-			for (i = this.dropdownKeyIndex + 1 ; i < this.tabDropdownList.length; i++) {
-				if ( this.tabDropdownList.eq(i).css('display') !== 'none') {
-					newIndex = i;
-					break;
-				}
-			}
-			// if found a new index, assign as drop index
-			if (newIndex !== -1) {
-				this.dropdownKeyIndex = newIndex;
-			}
-			// no next index found, loop our arrow behaviour around to start
-			else {
-				for (i = 0; i < this.dropdownKeyIndex; i++) {
-					if ( this.tabDropdownList.eq(i).css('display') !== 'none' ) {
-						this.dropdownKeyIndex = i;
-						break;
-					}
-				}
-			}
+			this.dropdownKeyIndex = getNextDropdownIndex(this.dropdownKeyIndex, 1, this.tabDropdownList);
 			this.tabDropdownList.eq(this.dropdownKeyIndex).addClass('lm_keyboard_active');
 		} else if (e.key === 'ArrowUp') {
 			this.tabDropdownList.eq(this.dropdownKeyIndex).removeClass('lm_keyboard_active');
-			// find the previous visible index
-			for (i = this.dropdownKeyIndex - 1; i >= 0; i--) {
-				if ( this.tabDropdownList.eq(i).css('display') !== 'none') {
-					newIndex = i;
-					break;
-				}
-			}
-
-			if (newIndex !== -1) {
-				this.dropdownKeyIndex = newIndex;
-			}
-			// no prev index found, loop our arrow behaviour around to end
-			else {
-				for (i = this.tabDropdownList.length - 1; i > this.dropdownKeyIndex; i--) {
-					if ( this.tabDropdownList.eq(i).css('display') !== 'none' ) {
-						this.dropdownKeyIndex = i;
-						break;
-					}
-				}
-			}
+			this.dropdownKeyIndex = getNextDropdownIndex(this.dropdownKeyIndex, -1, this.tabDropdownList);
 			this.tabDropdownList.eq(this.dropdownKeyIndex).addClass('lm_keyboard_active');
+
 		}
 	},
 
@@ -3395,7 +3372,8 @@ lm.utils.copy( lm.controls.Tab.prototype, {
 			// makes sure clicked tabs scrollintoview (either those partially offscreen or in dropdown)
 			this.element.get(0).scrollIntoView({
 				inline: 'nearest',
-				// behavior: 'smooth'
+				// behaviour smooth is not possible here, as when a tab becomes active it may attempt to take focus
+				// which interupts any scroll behaviour from completeting
 			 });
 			 
 			// middle mouse button
