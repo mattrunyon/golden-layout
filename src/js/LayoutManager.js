@@ -769,8 +769,8 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 		}
 		$( window )
 			.on( 'unload beforeunload', this._unloadFunction )
-			.on("blur.lm", this._windowBlur)
-			.on("focus.lm", this._windowFocus);
+			.on('blur.lm', this._windowBlur)
+			.on('focus.lm', this._windowFocus);
 	},
 
 
@@ -778,11 +778,11 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 	 * Handles setting a class based on window focus, useful for focus indicators
 	 */
 	_windowBlur: function(){
-		this.root.element.addClass("lm_window_blur");
+		this.root.element.addClass('lm_window_blur');
 	}, 
 
 	_windowFocus: function(){
-		this.root.element.removeClass("lm_window_blur");
+		this.root.element.removeClass('lm_window_blur');
 	},
 
 	/**

@@ -28,6 +28,12 @@ lm.controls.DragProxy = function( x, y, dragListener, layoutManager, contentItem
 	this._dragListener.on( 'drag', this._onDrag, this );
 	this._dragListener.on( 'dragStop', this._onDrop, this );
 
+	// set the inserted drag placeholder to be the size of the tab removed
+	if (this._contentItem.tab && this._contentItem.tab.element) {	
+		this._layoutManager.tabDropPlaceholder.width(this._contentItem.tab.element.outerWidth(true));
+		this._layoutManager.tabDropPlaceholder.height(this._contentItem.tab.element.outerHeight(true));
+	}
+
 	this.element = $( lm.controls.DragProxy._template );
 	if( originalParent && originalParent._side ) {
 		this._sided = originalParent._sided;

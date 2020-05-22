@@ -3,6 +3,7 @@ lm.items.Stack = function( layoutManager, config, parent ) {
 
 	this.element = $( '<div class="lm_item lm_stack"></div>' );
 	this._activeContentItem = null;
+	
 	var cfg = layoutManager.config;
 	this._header = { // defaults' reconstruction from old configuration style
 		show: cfg.settings.hasHeaders === true && config.hasHeaders !== false,
@@ -11,7 +12,9 @@ lm.items.Stack = function( layoutManager, config, parent ) {
 		close: cfg.settings.showCloseIcon && cfg.labels.close,
 		minimise: cfg.labels.minimise,
 	};
-	if( cfg.header ) // load simplified version of header configuration (https://github.com/deepstreamIO/golden-layout/pull/245)
+
+	// load simplified version of header configuration (https://github.com/deepstreamIO/golden-layout/pull/245)
+	if( cfg.header ) 
 		lm.utils.copy( this._header, cfg.header );
 	if( config.header ) // load from stack
 		lm.utils.copy( this._header, config.header );
@@ -32,6 +35,7 @@ lm.items.Stack = function( layoutManager, config, parent ) {
 	this.element.append( this.childElementContainer );
 	this._setupHeaderPosition();
 	this._$validateClosability();
+
 };
 
 lm.utils.extend( lm.items.Stack, lm.items.AbstractContentItem );
@@ -58,6 +62,8 @@ lm.utils.copy( lm.items.Stack.prototype, {
 		var i, initialItem;
 
 		if( this.isInitialised === true ) return;
+
+		this.header._attachWheelListener();
 
 		lm.items.AbstractContentItem.prototype._$init.call( this );
 
@@ -133,8 +139,7 @@ lm.utils.copy( lm.items.Stack.prototype, {
 	 * @returns {void}
 	 */
 	_$validateClosability: function() {
-		var contentItem,
-			isClosable,
+		var isClosable,
 			len,
 			i;
 
@@ -272,7 +277,7 @@ lm.utils.copy( lm.items.Stack.prototype, {
 
 				if( segment === 'header' ) {
 					this._dropSegment = 'header';
-					this._highlightHeaderDropZone( this._sided ? y : x );
+					this._highlightHeaderDropZone( x , y );
 				} else {
 					this._resetHeaderDropZone();
 					this._highlightBodyDropZone( segment );
@@ -406,21 +411,16 @@ lm.utils.copy( lm.items.Stack.prototype, {
 	},
 
 	_highlightHeaderDropZone: function( x ) {
-		var i,
-			tabElement,
-			tabsLength = this.header.tabs.length,
-			isAboveTab = false,
-			tabTop,
-			tabLeft,
-			offset,
-			placeHolderLeft,
-			headerOffset,
-			tabWidth,
-			halfX;
+		var tabsLength = this.header.tabs.length;
+		var	tabElement = null;
+		var	tabRect = null;
+
+		// I've omitted code for side edge tabs here
+		// illumon doesn't need it, will slowly pull that code out elsewhere too
 
 		// Empty stack
 		if( tabsLength === 0 ) {
-			headerOffset = this.header.element.offset();
+			var headerOffset = this.header.element.offset();
 
 			this.layoutManager.dropTargetIndicator.highlightArea( {
 				x1: headerOffset.left,
@@ -432,63 +432,59 @@ lm.utils.copy( lm.items.Stack.prototype, {
 			return;
 		}
 
-		for( i = 0; i < tabsLength; i++ ) {
-			if (!this.header.tabs[ i ].element.is(":visible")) { 
-				break;
+		var tabsContainer =  this.header.tabsContainer;
+		var tabsContainerRect = tabsContainer.get(0).getBoundingClientRect();
+		var placeholderRect = this.layoutManager.tabDropPlaceholder.get(0).getBoundingClientRect();
+		
+		if (x < tabsContainerRect.left) {
+			// is over left tab controls button
+			//  move x to a new point to inside left edge of container
+			x = tabsContainerRect.left + 1;
+		}
+		else if (x > tabsContainerRect.right) {
+			// is over right tab controls button
+			// move x to a new point to inside right edge of container
+			x = tabsContainerRect.right - 1;
+		}
+		
+		// if its not inide a placeholder, 
+		if ( !(placeholderRect.left < x && x < placeholderRect.right) ) {
+			// which tab is it over ...
+			for(var i = 0; i < tabsLength; i++ ) {
+				tabElement = this.header.tabs[ i ].element;
+				tabRect = tabElement.get(0).getBoundingClientRect();
+				if ( tabRect.left < x && x < tabRect.right) {
+					this._dropIndex = i;
+					break;
+				}
 			}
-			tabElement = this.header.tabs[ i ].element;
-			offset = tabElement.offset();
-			if( this._sided ) {
-				// vertical tabs
-				tabLeft = offset.top;
-				tabTop = offset.left;
-				tabWidth = tabElement.height();
-			} else {
-				// horizontal tabs
-				tabLeft = offset.left;
-				tabTop = offset.top;
-				tabWidth = tabElement.width();
-			}
 
-			if( x > tabLeft && x < tabLeft + tabWidth ) {
-				isAboveTab = true;
-				break;
+			// we have tabRect at this x,y from the loop above
+			if( tabElement &&  x < tabRect.left + tabRect.width * 0.5 ) {
+				// mostly before an element, insert placeholder before
+				tabElement.before( this.layoutManager.tabDropPlaceholder );
+			}
+			else if (tabElement) {
+				// x is likely after the lhe last item, position after and increase drop index
+				this._dropIndex = Math.min(this._dropIndex + 1, tabsLength);
+				tabElement.after( this.layoutManager.tabDropPlaceholder );
 			}
 		}
 
-		if( isAboveTab === false && x < tabLeft ) {
-			return;
-		}
-
-		halfX = tabLeft + tabWidth / 2;
-
-		if( x < halfX ) {
-			this._dropIndex = i;
-			tabElement.before( this.layoutManager.tabDropPlaceholder );
-		} else {
-			this._dropIndex = Math.min( i + 1, tabsLength );
-			tabElement.after( this.layoutManager.tabDropPlaceholder );
-		}
-
-
-		if( this._sided ) {
-			placeHolderTop = this.layoutManager.tabDropPlaceholder.offset().top;
-			this.layoutManager.dropTargetIndicator.highlightArea( {
-				x1: tabTop,
-				x2: tabTop + tabElement.innerHeight(),
-				y1: placeHolderTop,
-				y2: placeHolderTop + this.layoutManager.tabDropPlaceholder.width()
-			} );
-			return;
-		}
-		placeHolderLeft = this.layoutManager.tabDropPlaceholder.offset().left;
-
+		var placeHolderLeft = this.layoutManager.tabDropPlaceholder.offset().left; 
+		placeHolderLeft = Math.max(placeHolderLeft, this.header.tabsContainer.offset().left);
+		var placeHolderRight = placeHolderLeft + this.layoutManager.tabDropPlaceholder.width();
+		placeHolderRight = Math.min(
+			placeHolderRight, this.header.tabsContainer.offset().left + 
+			this.header.tabsContainer.innerWidth()
+		);
 		this.layoutManager.dropTargetIndicator.highlightArea( {
 			x1: placeHolderLeft,
-			x2: placeHolderLeft + this.layoutManager.tabDropPlaceholder.width(),
-			y1: tabTop,
-			y2: tabTop + tabElement.innerHeight()
+			x2: placeHolderRight,
+			y1: this.header.element.offset().top,
+			y2: this.header.element.offset().top + this.header.element.innerHeight()
 		} );
+
 	},
 
 	_resetHeaderDropZone: function() {
