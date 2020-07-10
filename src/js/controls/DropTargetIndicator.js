@@ -14,8 +14,9 @@ lm.utils.copy( lm.controls.DropTargetIndicator.prototype, {
 		this.element.css( {
 			left: area.x1,
 			top: area.y1,
-			width: area.x2 - area.x1,
-			height: area.y2 - area.y1
+			// marching ants were causing rendering artifacts with fractional pixels
+			width: Math.floor(area.x2 - area.x1),
+			height:  Math.floor(area.y2 - area.y1)
 		} ).show();
 	},
 
