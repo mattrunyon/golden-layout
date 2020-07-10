@@ -563,6 +563,11 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		this.tabDropdownContainer.show();
 		this.isDropdownShown = true;
 
+		// dropdown is a part of the header z-index context
+		// add class to header when dropdown is open
+		// so we can bump the z-index of the lists parent
+		this.element.addClass("lm_dropdown_open"); 
+
 		// focus the dropdown filter list input
 		this.tabDropdownSearch.val('').focus();
 		this.dropdownKeyIndex = 0;
@@ -651,7 +656,6 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		// dropdown already closed, do nothing
 		if (!this.isDropdownShown) return;
 		
-		
 		if ( event && this.tabDropdownContainer.get(0).contains(event.target) ) {
 			// prevent events occuring inside the list from causing a close
 			return;
@@ -661,6 +665,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 			return;
 		}
 
+		this.element.removeClass("lm_dropdown_open");
 		this.tabDropdownContainer.hide();
 		this.isDropdownShown = false;
 

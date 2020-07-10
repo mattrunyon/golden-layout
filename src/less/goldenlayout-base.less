@@ -85,8 +85,19 @@
   display: flex;
   justify-content: space-between;
   max-width: 100%;
-  z-index: 1;
+  z-index: 12; //above lm_content, below lm_splitter
   position: relative;
+
+  &.lm_dropdown_open {
+    // This is an ugly hack, z-index of the whole header needs to be moved up
+    // when the menu is open, because its positioned relative to header.
+    // The header has a position, which creates a stacking context
+    // that can result in the next header being "above" the dropdown.
+    // The same problem happens for splitters too.
+    // A better solution would refactor the dropdown to be a root node,
+    // and in general use z-index way less.
+    z-index: 22; //above other lm_headers and lm_splitter
+  }
 
   [class^="lm_"] {
     box-sizing: content-box !important;
