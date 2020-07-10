@@ -2338,8 +2338,9 @@ lm.utils.copy( lm.controls.DropTargetIndicator.prototype, {
 		this.element.css( {
 			left: area.x1,
 			top: area.y1,
-			width: area.x2 - area.x1,
-			height: area.y2 - area.y1
+			// marching ants were causing rendering artifacts with fractional pixels
+			width: Math.floor(area.x2 - area.x1),
+			height:  Math.floor(area.y2 - area.y1)
 		} ).show();
 	},
 
@@ -2912,6 +2913,11 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		this.tabDropdownContainer.show();
 		this.isDropdownShown = true;
 
+		// dropdown is a part of the header z-index context
+		// add class to header when dropdown is open
+		// so we can bump the z-index of the lists parent
+		this.element.addClass("lm_dropdown_open"); 
+
 		// focus the dropdown filter list input
 		this.tabDropdownSearch.val('').focus();
 		this.dropdownKeyIndex = 0;
@@ -2952,11 +2958,14 @@ lm.utils.copy( lm.controls.Header.prototype, {
 			return startIndex;
 		}
 
-		if (e.key === 'ArrowDown') {
+		// allow tab or arrow key navigation of list, prevent tabs default behaviour 
+		if (e.key === 'ArrowDown' || (e.key === 'Tab' && e.shiftKey === false)) {
+			e.preventDefault();
 			this.tabDropdownList.eq(this.dropdownKeyIndex).removeClass('lm_keyboard_active');
 			this.dropdownKeyIndex = getNextDropdownIndex(this.dropdownKeyIndex, 1, this.tabDropdownList);
 			this.tabDropdownList.eq(this.dropdownKeyIndex).addClass('lm_keyboard_active');
-		} else if (e.key === 'ArrowUp') {
+		} else if (e.key === 'ArrowUp' || e.key === 'Tab') {
+			e.preventDefault();
 			this.tabDropdownList.eq(this.dropdownKeyIndex).removeClass('lm_keyboard_active');
 			this.dropdownKeyIndex = getNextDropdownIndex(this.dropdownKeyIndex, -1, this.tabDropdownList);
 			this.tabDropdownList.eq(this.dropdownKeyIndex).addClass('lm_keyboard_active');
@@ -2997,7 +3006,6 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		// dropdown already closed, do nothing
 		if (!this.isDropdownShown) return;
 		
-		
 		if ( event && this.tabDropdownContainer.get(0).contains(event.target) ) {
 			// prevent events occuring inside the list from causing a close
 			return;
@@ -3007,6 +3015,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 			return;
 		}
 
+		this.element.removeClass("lm_dropdown_open");
 		this.tabDropdownContainer.hide();
 		this.isDropdownShown = false;
 
