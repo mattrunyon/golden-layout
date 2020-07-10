@@ -603,11 +603,14 @@ lm.utils.copy( lm.controls.Header.prototype, {
 			return startIndex;
 		}
 
-		if (e.key === 'ArrowDown') {
+		// allow tab or arrow key navigation of list, prevent tabs default behaviour 
+		if (e.key === 'ArrowDown' || (e.key === 'Tab' && e.shiftKey === false)) {
+			e.preventDefault();
 			this.tabDropdownList.eq(this.dropdownKeyIndex).removeClass('lm_keyboard_active');
 			this.dropdownKeyIndex = getNextDropdownIndex(this.dropdownKeyIndex, 1, this.tabDropdownList);
 			this.tabDropdownList.eq(this.dropdownKeyIndex).addClass('lm_keyboard_active');
-		} else if (e.key === 'ArrowUp') {
+		} else if (e.key === 'ArrowUp' || e.key === 'Tab') {
+			e.preventDefault();
 			this.tabDropdownList.eq(this.dropdownKeyIndex).removeClass('lm_keyboard_active');
 			this.dropdownKeyIndex = getNextDropdownIndex(this.dropdownKeyIndex, -1, this.tabDropdownList);
 			this.tabDropdownList.eq(this.dropdownKeyIndex).addClass('lm_keyboard_active');
