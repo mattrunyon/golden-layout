@@ -39,6 +39,7 @@ lm.utils.copy( lm.items.Root.prototype, {
 			this.contentItems[ 0 ].element.height( height );
 		}
 	},
+	
 	_$highlightDropZone: function( x, y, area ) {
 		this.layoutManager.tabDropPlaceholder.remove();
 		lm.items.AbstractContentItem.prototype._$highlightDropZone.apply( this, arguments );

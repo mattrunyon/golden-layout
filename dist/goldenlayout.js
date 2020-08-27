@@ -321,18 +321,20 @@ lm.utils.EventEmitter = function() {
  * @type {String}
  */
 lm.utils.EventEmitter.ALL_EVENT = '__all';
-lm.utils.DragListener = function( eElement, nButtonCode ) {
+lm.utils.DragListener = function( eElement, destroyAfterMouseUp ) {
 	lm.utils.EventEmitter.call( this );
 
 	this._eElement = $( eElement );
 	this._oDocument = $( document );
 	this._eBody = $( document.body );
-	this._nButtonCode = nButtonCode || 0;
+	// used by drag sources, to destroy listener at the right time
+	this._destroyAfterMouseUp = destroyAfterMouseUp || false;
 
 	/**
 	 * The delay after which to start the drag in milliseconds
 	 */
 	this._nDelay = 400;
+	this._timeout = null;
 
 	/**
 	 * The distance the mouse needs to be moved to qualify as a drag
@@ -360,13 +362,18 @@ lm.utils.DragListener.timeout = null;
 lm.utils.copy( lm.utils.DragListener.prototype, {
 	destroy: function() {
 		this._eElement.unbind( 'mousedown', this._fDown );
-        this._oDocument.unbind( 'mouseup', this._fUp );
+		this._oDocument.unbind( 'mouseup', this._fUp );
+
         this._eElement = null;
         this._oDocument = null;
-        this._eBody = null;
+		this._eBody = null;
+
+		clearTimeout( this._timeout );
+		this._timeout = null;
 	},
 
 	onMouseDown: function( oEvent ) {
+
 		oEvent.preventDefault();
 
 		if( oEvent.button === 0 ) {
@@ -396,7 +403,6 @@ lm.utils.copy( lm.utils.DragListener.prototype, {
 					Math.abs( this._nX ) > this._nDistance ||
 					Math.abs( this._nY ) > this._nDistance
 				) {
-					clearTimeout( this._timeout );
 					this._startDrag();
 				}
 			}
@@ -408,22 +414,30 @@ lm.utils.copy( lm.utils.DragListener.prototype, {
 	},
 
 	onMouseUp: function( oEvent ) {
+
 		if( this._timeout != null ) {
 			clearTimeout( this._timeout );
-			this._eBody.removeClass( 'lm_dragging' );
-			this._eElement.removeClass( 'lm_dragging' );
-			this._oDocument.find( 'iframe' ).css( 'pointer-events', '' );
 			this._oDocument.unbind( 'mousemove', this._fMove );
 			this._oDocument.unbind( 'mouseup', this._fUp );
+			this._oDocument.find( 'iframe' ).css( 'pointer-events', '' );
 
 			if( this._bDragging === true ) {
 				this._bDragging = false;
 				this.emit( 'dragStop', oEvent, this._nOriginalX + this._nX );
 			}
+
+			// after dragStop, so that .lm_dragging is removed after size is processed
+			// and any overflow: hidden remains applied during the calculations
+			if ( this._eBody ) this._eBody.removeClass( 'lm_dragging' );
+			if ( this._eElement ) this._eElement.removeClass( 'lm_dragging' );
+
+			if (this._destroyAfterMouseUp) this.destroy();
+			
 		}
 	},
 
 	_startDrag: function() {
+		clearTimeout( this._timeout );
 		this._bDragging = true;
 		this._eBody.addClass( 'lm_dragging' );
 		this._eElement.addClass( 'lm_dragging' );
@@ -945,6 +959,21 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 
 		return dragSource;
 	},
+
+
+	/**
+	 * Create a new item in a dragging state, given a starting mouse event to act as the initial position
+	 *
+	 * @param   {Object|Function} itemConfig for the new item to be created, or a function which will provide it
+	 * @param   {MouseEvent} event used as the starting position for the dragProxy
+	 *
+	 * @returns {void}
+	 */
+	createDragSourceFromEvent: function( itemConfig, event ) {
+		this.config.settings.constrainDragToContainer = false;
+		return new lm.controls.DragSourceFromEvent( itemConfig, this, event );
+	},
+
 
 	/**
 	 * Programmatically selects an item. This deselects
@@ -2076,11 +2105,11 @@ lm.controls.DragProxy = function( x, y, dragListener, layoutManager, contentItem
 	this._dragListener.on( 'drag', this._onDrag, this );
 	this._dragListener.on( 'dragStop', this._onDrop, this );
 
-	// set the inserted drag placeholder to be the size of the tab removed
+	// set the inserted drag placeholder to be the size of the tab removed, before its removed
 	if (this._contentItem.tab && this._contentItem.tab.element) {	
 		this._layoutManager.tabDropPlaceholder.width(this._contentItem.tab.element.outerWidth(true));
 		this._layoutManager.tabDropPlaceholder.height(this._contentItem.tab.element.outerHeight(true));
-	}
+	} 
 
 	this.element = $( lm.controls.DragProxy._template );
 	if( originalParent && originalParent._side ) {
@@ -2090,7 +2119,8 @@ lm.controls.DragProxy = function( x, y, dragListener, layoutManager, contentItem
 			this.element.find( '.lm_content' ).after( this.element.find( '.lm_header' ) );
 	}
 	this.element.css( { left: x, top: y } );
-	this.element.find( '.lm_tab' ).attr( 'title', lm.utils.stripTags( this._contentItem.config.title ) );
+	this._proxyTab = this.element.find( '.lm_tab' );
+	this._proxyTab.attr( 'title', lm.utils.stripTags( this._contentItem.config.title ) );
 	this.element.find( '.lm_title' ).html( this._contentItem.config.title );
 	this.childElementContainer = this.element.find( '.lm_content' );
 	this.childElementContainer.append( contentItem.element );
@@ -2100,6 +2130,12 @@ lm.controls.DragProxy = function( x, y, dragListener, layoutManager, contentItem
 	this._setDimensions();
 
 	$( document.body ).append( this.element );
+
+	// there's no content tab to use yet, use the proxy tab size for placeholder sizing, after it's created
+	if (!this._contentItem.tab && this._proxyTab.length) {
+		this._layoutManager.tabDropPlaceholder.width(this._proxyTab.outerWidth(true));
+		this._layoutManager.tabDropPlaceholder.height(this._proxyTab.outerHeight(true));
+	}
 
 	var offset = this._layoutManager.container.offset();
 
@@ -2217,6 +2253,9 @@ lm.utils.copy( lm.controls.DragProxy.prototype, {
 			this._contentItem._$destroy();
 		}
 
+		this._dragListener.off( 'drag', this._onDrag, this );
+		this._dragListener.off( 'dragStop', this._onDrop, this );
+
 		this.element.remove();
 
 		this._layoutManager.emit( 'itemDropped', this._contentItem );
@@ -2293,11 +2332,7 @@ lm.utils.copy( lm.controls.DragSource.prototype, {
 	 * @returns {void}
 	 */
 	_createDragListener: function() {
-		if( this._dragListener !== null ) {
-			this._dragListener.destroy();
-		}
-
-		this._dragListener = new lm.utils.DragListener( this._element );
+		this._dragListener = new lm.utils.DragListener( this._element, true );
 		this._dragListener.on( 'dragStart', this._onDragStart, this );
 		this._dragListener.on( 'dragStop', this._createDragListener, this );
 	},
@@ -2319,6 +2354,72 @@ lm.utils.copy( lm.controls.DragSource.prototype, {
 			dragProxy = new lm.controls.DragProxy( x, y, this._dragListener, this._layoutManager, contentItem, null );
 
 		this._layoutManager.transitionIndicator.transitionElements( this._element, dragProxy.element );
+	}
+} );
+
+/**
+ * Creates a drag item given a starting mouseevent
+ * that can then be dragged into the Layout
+ *
+ * @param {Object} itemConfig the configuration for the contentItem that will be created
+ * @param {LayoutManager} layoutManager
+ * @param {MouseEvent} event used to get the starting position
+ *
+ * @constructor
+ */
+lm.controls.DragSourceFromEvent = function( itemConfig, layoutManager, event  ) {
+	this._element = $(window); // we need something to listen for mousemoves against
+	this._itemConfig = itemConfig;
+	this._layoutManager = layoutManager;
+	this._dragListener = null;
+
+	this._createDragListener(event);
+
+};
+
+lm.utils.copy( lm.controls.DragSourceFromEvent.prototype, {
+
+	/**
+	 * Called initially and after every drag
+	 *
+	 * @returns {void}
+	 */
+	_createDragListener: function(event) {
+		if( this._dragListener !== null ) {
+			this._dragListener.destroy();
+		}
+
+		this._dragListener = new lm.utils.DragListener( this._element, true );
+		this._dragListener.on( 'dragStart', this._onDragStart, this );
+		this._dragListener.on( 'dragStop', this._destroy, this );
+
+		// manaully pass in an event as mousedow, that already happened to start the dragListener
+		this._dragListener._fDown(event);
+		this._dragListener._startDrag(); 
+	},
+
+	_destroy: function () {
+		this._dragListener = null;
+		this._element = null;
+		this._itemConfig = null;
+		this._layoutManager = null;
+	},
+	
+	/**
+	 * Callback for the DragListener's dragStart event
+	 *
+	 * @param   {int} x the x position of the mouse on dragStart
+	 * @param   {int} y the x position of the mouse on dragStart
+	 *
+	 * @returns {void}
+	 */
+	_onDragStart: function( x, y ) {
+		var itemConfig = this._itemConfig;
+		if( lm.utils.isFunction( itemConfig ) ) {
+			itemConfig = itemConfig();
+		}
+		var contentItem = this._layoutManager._$normalizeContentItem( $.extend( true, {}, itemConfig ) );
+		new lm.controls.DragProxy( x, y, this._dragListener, this._layoutManager, contentItem, null );
 	}
 } );
 
@@ -2936,7 +3037,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 			return;
 		}
 		
-		if (e.key === 'Enter') {
+		if (e.key === 'Enter' || e.key === ' ') {
 			// simulate "click"
 			this._hideAdditionalTabsDropdown();
 			this.tabs[this.dropdownKeyIndex]._onTabClick();
@@ -3136,6 +3237,8 @@ lm.utils.copy( lm.controls.Splitter.prototype, {
 	},
 
 	_$destroy: function() {
+		this._dragListener.destroy();
+		this._dragListener = null;
 		this.element.remove();
 	},
 
@@ -4240,6 +4343,7 @@ lm.utils.copy( lm.items.Root.prototype, {
 			this.contentItems[ 0 ].element.height( height );
 		}
 	},
+	
 	_$highlightDropZone: function( x, y, area ) {
 		this.layoutManager.tabDropPlaceholder.remove();
 		lm.items.AbstractContentItem.prototype._$highlightDropZone.apply( this, arguments );
@@ -5243,11 +5347,12 @@ lm.utils.copy( lm.items.Stack.prototype, {
 		if( tabsLength === 0 ) {
 			var headerOffset = this.header.element.offset();
 
+			// we don't have a placeholder to measure in the dom, lets just cheat and make it 100px.
 			this.layoutManager.dropTargetIndicator.highlightArea( {
 				x1: headerOffset.left,
 				x2: headerOffset.left + 100,
-				y1: headerOffset.top + this.header.element.height() - 20,
-				y2: headerOffset.top + this.header.element.height()
+				y1: this.header.element.offset().top,
+				y2: this.header.element.offset().top + this.header.element.innerHeight()
 			} );
 
 			return;

@@ -586,7 +586,7 @@ lm.utils.copy( lm.controls.Header.prototype, {
 			return;
 		}
 		
-		if (e.key === 'Enter') {
+		if (e.key === 'Enter' || e.key === ' ') {
 			// simulate "click"
 			this._hideAdditionalTabsDropdown();
 			this.tabs[this.dropdownKeyIndex]._onTabClick();

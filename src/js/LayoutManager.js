@@ -505,6 +505,21 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 		return dragSource;
 	},
 
+
+	/**
+	 * Create a new item in a dragging state, given a starting mouse event to act as the initial position
+	 *
+	 * @param   {Object|Function} itemConfig for the new item to be created, or a function which will provide it
+	 * @param   {MouseEvent} event used as the starting position for the dragProxy
+	 *
+	 * @returns {void}
+	 */
+	createDragSourceFromEvent: function( itemConfig, event ) {
+		this.config.settings.constrainDragToContainer = false;
+		return new lm.controls.DragSourceFromEvent( itemConfig, this, event );
+	},
+
+
 	/**
 	 * Programmatically selects an item. This deselects
 	 * the currently selected item, selects the specified item

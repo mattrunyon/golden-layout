@@ -422,11 +422,12 @@ lm.utils.copy( lm.items.Stack.prototype, {
 		if( tabsLength === 0 ) {
 			var headerOffset = this.header.element.offset();
 
+			// we don't have a placeholder to measure in the dom, lets just cheat and make it 100px.
 			this.layoutManager.dropTargetIndicator.highlightArea( {
 				x1: headerOffset.left,
 				x2: headerOffset.left + 100,
-				y1: headerOffset.top + this.header.element.height() - 20,
-				y2: headerOffset.top + this.header.element.height()
+				y1: this.header.element.offset().top,
+				y2: this.header.element.offset().top + this.header.element.innerHeight()
 			} );
 
 			return;

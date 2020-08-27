@@ -25,11 +25,7 @@ lm.utils.copy( lm.controls.DragSource.prototype, {
 	 * @returns {void}
 	 */
 	_createDragListener: function() {
-		if( this._dragListener !== null ) {
-			this._dragListener.destroy();
-		}
-
-		this._dragListener = new lm.utils.DragListener( this._element );
+		this._dragListener = new lm.utils.DragListener( this._element, true );
 		this._dragListener.on( 'dragStart', this._onDragStart, this );
 		this._dragListener.on( 'dragStop', this._createDragListener, this );
 	},

@@ -13,6 +13,8 @@ lm.utils.copy( lm.controls.Splitter.prototype, {
 	},
 
 	_$destroy: function() {
+		this._dragListener.destroy();
+		this._dragListener = null;
 		this.element.remove();
 	},
 

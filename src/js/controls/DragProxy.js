@@ -28,11 +28,11 @@ lm.controls.DragProxy = function( x, y, dragListener, layoutManager, contentItem
 	this._dragListener.on( 'drag', this._onDrag, this );
 	this._dragListener.on( 'dragStop', this._onDrop, this );
 
-	// set the inserted drag placeholder to be the size of the tab removed
+	// set the inserted drag placeholder to be the size of the tab removed, before its removed
 	if (this._contentItem.tab && this._contentItem.tab.element) {	
 		this._layoutManager.tabDropPlaceholder.width(this._contentItem.tab.element.outerWidth(true));
 		this._layoutManager.tabDropPlaceholder.height(this._contentItem.tab.element.outerHeight(true));
-	}
+	} 
 
 	this.element = $( lm.controls.DragProxy._template );
 	if( originalParent && originalParent._side ) {
@@ -42,7 +42,8 @@ lm.controls.DragProxy = function( x, y, dragListener, layoutManager, contentItem
 			this.element.find( '.lm_content' ).after( this.element.find( '.lm_header' ) );
 	}
 	this.element.css( { left: x, top: y } );
-	this.element.find( '.lm_tab' ).attr( 'title', lm.utils.stripTags( this._contentItem.config.title ) );
+	this._proxyTab = this.element.find( '.lm_tab' );
+	this._proxyTab.attr( 'title', lm.utils.stripTags( this._contentItem.config.title ) );
 	this.element.find( '.lm_title' ).html( this._contentItem.config.title );
 	this.childElementContainer = this.element.find( '.lm_content' );
 	this.childElementContainer.append( contentItem.element );
@@ -52,6 +53,12 @@ lm.controls.DragProxy = function( x, y, dragListener, layoutManager, contentItem
 	this._setDimensions();
 
 	$( document.body ).append( this.element );
+
+	// there's no content tab to use yet, use the proxy tab size for placeholder sizing, after it's created
+	if (!this._contentItem.tab && this._proxyTab.length) {
+		this._layoutManager.tabDropPlaceholder.width(this._proxyTab.outerWidth(true));
+		this._layoutManager.tabDropPlaceholder.height(this._proxyTab.outerHeight(true));
+	}
 
 	var offset = this._layoutManager.container.offset();
 
@@ -168,6 +175,9 @@ lm.utils.copy( lm.controls.DragProxy.prototype, {
 		} else {
 			this._contentItem._$destroy();
 		}
+
+		this._dragListener.off( 'drag', this._onDrag, this );
+		this._dragListener.off( 'dragStop', this._onDrop, this );
 
 		this.element.remove();
 
