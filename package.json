@@ -21,6 +21,7 @@
     "jshint": "^2.11.1",
     "karma": "0.13.*",
     "karma-chrome-launcher": "~0.1.4",
+    "karma-cli": "^2.0.0",
     "karma-coverage": "0.2.4",
     "karma-firefox-launcher": "^1.0.0",
     "karma-ie-launcher": "~0.1.5",
@@ -55,7 +56,8 @@
     "clean": "rimraf ./dist tsconfig.tsbuildinfo",
     "prestart": "npm run build-dev",
     "start": "cross-env NODE_ENV=development npm run watch",
-    "test": "grunt test && npm run tslint",
+    "test": "karma start karma.conf.js",
+    "test:ci": "karma start karma.conf.js --single-run",
     "tslint": "tslint \"**/*.ts\" -e \"node_modules/**\" -e \"typings/**\"",
     "prepublish": "typings install",
     "publish": "npm -s run tslint"
