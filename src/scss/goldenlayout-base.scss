@@ -1,20 +1,20 @@
 // Width variables (appears count calculates by raw css)
-@width0: 100%; // Appears 3 times
-@width1: 20px; // Appears 2 times
-@width2: 100px; // Appears 1 time
-@width3: 14px; // Appears 1 time
-@width4: 18px; // Appears 1 time
-@width5: 15px; // Appears 1 time
-@width6: 2px; // Appears 1 time
+$width0: 100%; // Appears 3 times
+$width1: 20px; // Appears 2 times
+$width2: 100px; // Appears 1 time
+$width3: 14px; // Appears 1 time
+$width4: 18px; // Appears 1 time
+$width5: 15px; // Appears 1 time
+$width6: 2px; // Appears 1 time
 
 // Height variables (appears count calculates by raw css)
-@height0: 100%; // Appears 4 times
-@height1: 20px; // Appears 2 times
-@height2: 14px; // Appears 2 times
-@height3: 10px; // Appears 1 time
-@height4: 19px; // Appears 1 time
-@height5: 18px; // Appears 1 time
-@height6: 15px; // Appears 1 time
+$height0: 100%; // Appears 4 times
+$height1: 20px; // Appears 2 times
+$height2: 14px; // Appears 2 times
+$height3: 10px; // Appears 1 time
+$height4: 19px; // Appears 1 time
+$height5: 18px; // Appears 1 time
+$height6: 15px; // Appears 1 time
 
 .lm_root {
   position: relative;
@@ -62,7 +62,7 @@
 
   &.lm_vertical {
     .lm_drag_handle {
-      width: @width0;
+      width: $width0;
       position: absolute;
       cursor: ns-resize;
     }
@@ -70,10 +70,10 @@
 
   &.lm_horizontal {
     float: left;
-    height: @height0;
+    height: $height0;
 
     .lm_drag_handle {
-      height: @height0;
+      height: $height0;
       position: absolute;
       cursor: ew-resize;
     }
@@ -111,8 +111,8 @@
     > li {
       cursor: pointer;
       float: left;
-      width: @width4;
-      height: @height5;
+      width: $width4;
+      height: $height5;
       text-align: center;
     }
 
@@ -137,7 +137,7 @@
   // Single Tab container. A single Tab is set for each pane, a group of Tabs are contained in ".lm_header"
   .lm_tab {
     cursor: pointer;
-    height: @height2;
+    height: $height2;
     margin-top: 1px;
     padding: 0px 10px 5px;
     padding-right: 25px;
@@ -155,8 +155,8 @@
 
     // Close Tab Icon
     .lm_close_tab {
-      width: @width3;
-      height: @height2;
+      width: $width3;
+      height: $height2;
       position: absolute;
       top: 0;
       right: 0;
@@ -184,14 +184,14 @@
     .lm_tabs {
       transform-origin: left top;
       top: 0;
-      width:1000px; /*hack*/
+      width: 1000px; /*hack*/
     }
     .lm_controls {
-      bottom:0;
+      bottom: 0;
     }
   }
   .lm_items {
-    float:left;
+    float: left;
   }
 }
 
@@ -207,9 +207,9 @@
       }
     }
     .lm_tabdropdown_list {
-      top:initial;
-      right:initial;
-      left:20px;
+      top: initial;
+      right: initial;
+      left: 20px;
     }
   }
 }
@@ -230,8 +230,8 @@
       left: 3px;
     }
     .lm_tabdropdown_list {
-      top:initial;
-      right:20px;
+      top: initial;
+      right: 20px;
     }
   }
 }
@@ -240,15 +240,15 @@
 .lm_stack.lm_bottom {
   .lm_header {
     .lm_tab {
-      margin-top:0;
+      margin-top: 0;
       border-top: none;
     }
     .lm_controls {
       top: 3px;
     }
     .lm_tabdropdown_list {
-      top:initial;
-      bottom:20px;
+      top: initial;
+      bottom: 20px;
     }
   }
 }
@@ -324,8 +324,8 @@
 
   // Inner Placeholder
   .lm_inner {
-    width: @width0;
-    height: @height0;
+    width: $width0;
+    height: $height0;
     position: relative;
     top: 0;
     left: 0;
@@ -334,8 +334,8 @@
 
 .lm_transition_indicator {
   display: none;
-  width: @width1;
-  height: @height1;
+  width: $width1;
+  height: $height1;
   position: absolute;
   top: 0;
   left: 0;
@@ -344,16 +344,16 @@
 
 // If a specific Pane is Popped Out, so move it to a different Browser Window, Icon to restore original position is:
 .lm_popin {
-  width: @width1;
-  height: @height1;
+  width: $width1;
+  height: $height1;
   position: absolute;
   bottom: 0;
   right: 0;
   z-index: 9999;
 
   > * {
-    width: @width0;
-    height: @height0;
+    width: $width0;
+    height: $height0;
     position: absolute;
     top: 0;
     left: 0;
